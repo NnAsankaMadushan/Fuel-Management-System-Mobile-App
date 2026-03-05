@@ -11,6 +11,11 @@ import ScreenShell from '../../Components/UI/ScreenShell';
 import SectionHeader from '../../Components/UI/SectionHeader';
 
 const { colors, spacing, radius, shadow } = AppTheme;
+const getRecordTime = (item) => {
+  const createdTime = new Date(item?.createdAt || item?.updatedAt || '').getTime();
+  return Number.isFinite(createdTime) ? createdTime : 0;
+};
+const sortNewestFirst = (items = []) => [...items].sort((a, b) => getRecordTime(b) - getRecordTime(a));
 const initialStationOwnerForm = {
   name: '',
   email: '',
@@ -30,7 +35,7 @@ const StationScreen = () => {
   const fetchStations = useCallback(async () => {
     try {
       const response = await axios.get(buildApiUrl('/api/stations'), buildMobileRequestConfig(user));
-      setStations(response.data);
+      setStations(sortNewestFirst(Array.isArray(response.data) ? response.data : []));
     } catch (error) {
       console.error('Error fetching stations:', error);
     }
