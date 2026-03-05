@@ -66,6 +66,29 @@ export const UserProvider = ({ children }) => {
     setUser(null);
   };
 
+  const changePassword = async (currentPassword, newPassword) => {
+    if (!user?.token) {
+      throw new Error('You need to log in first.');
+    }
+
+    const response = await axios.put(
+      buildApiUrl('/api/users/change-password'),
+      { currentPassword, newPassword },
+      buildMobileRequestConfig(user),
+    );
+
+    const updatedUser = normalizeUserPayload({
+      ...user,
+      ...(response.data?.user || {}),
+      token: user.token,
+    });
+
+    await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+    setUser(updatedUser);
+
+    return response.data;
+  };
+
   // const navigateToRoleBasedScreen = (role) => {
   // if (role === 'vehicle_owner') {
   //   navigation.navigate('VehicleOwnerTabs');
@@ -89,7 +112,11 @@ export const UserProvider = ({ children }) => {
     AsyncStorage.setItem('user', JSON.stringify(mergedUser));
   };
 
-  return <UserContext.Provider value={{ user, loginUser, signupUser, logoutUser, updateUser }}>{children}</UserContext.Provider>;
+  return (
+    <UserContext.Provider value={{ user, loginUser, signupUser, logoutUser, updateUser, changePassword }}>
+      {children}
+    </UserContext.Provider>
+  );
 };
 
 export const useUser = () => useContext(UserContext);

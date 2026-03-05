@@ -29,5 +29,6 @@ export const normalizeUserPayload = (user) => {
   return {
     ...user,
     role: normalizeUserRole(user.role),
+    mustChangePassword: Boolean(user.mustChangePassword),
   };
 };

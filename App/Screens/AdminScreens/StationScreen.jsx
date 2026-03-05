@@ -11,12 +11,21 @@ import ScreenShell from '../../Components/UI/ScreenShell';
 import SectionHeader from '../../Components/UI/SectionHeader';
 
 const { colors, spacing, radius, shadow } = AppTheme;
+const initialStationOwnerForm = {
+  name: '',
+  email: '',
+  password: '',
+  phoneNumber: '',
+  nicNumber: '',
+};
 
 const StationScreen = () => {
   const { user } = useUser();
   const [stations, setStations] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStation, setSelectedStation] = useState(null);
+  const [stationOwnerForm, setStationOwnerForm] = useState(initialStationOwnerForm);
+  const [isCreatingOwner, setIsCreatingOwner] = useState(false);
 
   const fetchStations = useCallback(async () => {
     try {
@@ -37,10 +46,61 @@ const StationScreen = () => {
       return stations;
     }
 
-    return stations.filter((station) => station.stationName?.toLowerCase().includes(query));
+    return stations.filter((station) => {
+      const searchableValues = [
+        station.stationName,
+        station.location,
+        station.station_regNumber,
+        station.fuelStationOwner?.name,
+      ];
+
+      return searchableValues.some((value) => String(value || '').toLowerCase().includes(query));
+    });
   }, [stations, searchTerm]);
 
   const totalVehicles = stations.reduce((sum, station) => sum + (station.registeredVehicles?.length || 0), 0);
+
+  const handleStationOwnerFieldChange = (field, value) => {
+    setStationOwnerForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const handleCreateStationOwner = async () => {
+    const payload = {
+      name: stationOwnerForm.name.trim(),
+      email: stationOwnerForm.email.trim(),
+      password: stationOwnerForm.password,
+      phoneNumber: stationOwnerForm.phoneNumber.trim(),
+      nicNumber: stationOwnerForm.nicNumber.trim(),
+    };
+
+    if (Object.values(payload).some((value) => !value)) {
+      Alert.alert('Missing fields', 'Fill in all station owner fields before creating the account.');
+      return;
+    }
+
+    try {
+      setIsCreatingOwner(true);
+      const response = await axios.post(
+        buildApiUrl('/api/users/admin/station-owners'),
+        payload,
+        buildMobileRequestConfig(user),
+      );
+
+      Alert.alert(
+        'Success',
+        response.data?.message || 'Station owner account created successfully. They must change the temporary password on first login.',
+      );
+      setStationOwnerForm(initialStationOwnerForm);
+    } catch (error) {
+      console.error('Error creating station owner:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to create station owner account.');
+    } finally {
+      setIsCreatingOwner(false);
+    }
+  };
 
   const handleDeleteStation = async () => {
     if (!selectedStation) return;
@@ -70,9 +130,51 @@ const StationScreen = () => {
       </View>
 
       <View style={styles.sectionBlock}>
-        <SectionHeader badge="Records" title="Station records" subtitle="Search by station name." />
+        <SectionHeader badge="Accounts" title="Create station owner" subtitle="Admin-only account creation." />
+        <View style={styles.formPanel}>
+          <AppInput
+            label="Full name"
+            placeholder="Station owner name"
+            value={stationOwnerForm.name}
+            onChangeText={(value) => handleStationOwnerFieldChange('name', value)}
+          />
+          <AppInput
+            label="Email"
+            placeholder="owner@example.com"
+            value={stationOwnerForm.email}
+            onChangeText={(value) => handleStationOwnerFieldChange('email', value)}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+          <AppInput
+            label="Phone number"
+            placeholder="0771234567"
+            value={stationOwnerForm.phoneNumber}
+            onChangeText={(value) => handleStationOwnerFieldChange('phoneNumber', value)}
+            keyboardType="phone-pad"
+          />
+          <AppInput
+            label="NIC number"
+            placeholder="200012345678 or 123456789V"
+            value={stationOwnerForm.nicNumber}
+            onChangeText={(value) => handleStationOwnerFieldChange('nicNumber', value)}
+            autoCapitalize="characters"
+          />
+          <AppInput
+            label="Temporary password"
+            placeholder="Set an initial password"
+            value={stationOwnerForm.password}
+            onChangeText={(value) => handleStationOwnerFieldChange('password', value)}
+            secureTextEntry
+          />
+          <AppButton title="Create Station Owner" onPress={handleCreateStationOwner} loading={isCreatingOwner} />
+        </View>
+      </View>
+
+      <View style={styles.sectionBlock}>
+        <SectionHeader badge="Records" title="Station records" subtitle="Search by name, location, or registration number." />
         <View style={styles.searchPanel}>
-          <AppInput placeholder="Search station name..." value={searchTerm} onChangeText={setSearchTerm} />
+          <AppInput placeholder="Search station, location, reg number..." value={searchTerm} onChangeText={setSearchTerm} />
         </View>
       </View>
 
@@ -148,6 +250,16 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   searchPanel: {
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceStrong,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow.sm,
+  },
+  formPanel: {
+    gap: spacing.md,
     padding: spacing.lg,
     borderRadius: radius.lg,
     backgroundColor: colors.surfaceStrong,

@@ -2,6 +2,7 @@
 import React from 'react';
 import MainNavigation from './App/Navigations/AuthNavigations/MainNavigation';
 import { UserProvider } from './context/UserContext';
+import { ToastProvider } from './context/ToastContext';
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { AppTheme } from './constants/Colors';
 
@@ -19,10 +20,12 @@ const navigationTheme = {
 
 export default function App() {
   return (
-    <NavigationContainer theme={navigationTheme}>
-      <UserProvider>
-        <MainNavigation />
-      </UserProvider>
-    </NavigationContainer>
+    <ToastProvider>
+      <NavigationContainer theme={navigationTheme}>
+        <UserProvider>
+          <MainNavigation />
+        </UserProvider>
+      </NavigationContainer>
+    </ToastProvider>
   );
 }

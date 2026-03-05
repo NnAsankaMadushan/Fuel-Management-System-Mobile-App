@@ -4,9 +4,11 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { AppTheme } from '../../../constants/Colors';
 
 import HomeScreen from '../../Screens/OperatorScreens/HomeScreen';
+import ProfileScreen from '../../Screens/OperatorScreens/ProfileScreen';
 import StationFuelSummaryScreen from '../../Screens/SharedScreens/StationFuelSummaryScreen';
 import StationLogsScreen from '../../Screens/SharedScreens/StationLogsScreen';
 import VehicleRegisterScreen from '../../Screens/VehicleOwnerScreens/VehicleRegisterScreen';
+import NotificationCenterScreen from '../../Screens/SharedScreens/NotificationCenterScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -51,7 +53,7 @@ const OperatorTabs = () => (
       options={{
         tabBarLabel: 'Register',
         tabBarIcon: ({ color, size }) => (
-          <MaterialCommunityIcons name="car-plus" size={size} color={color} />
+          <MaterialCommunityIcons name="car-2-plus" size={size} color={color} />
         ),
       }}
     />
@@ -61,6 +63,22 @@ const OperatorTabs = () => (
       options={{
         tabBarLabel: 'Scan',
         tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="qrcode-scan" size={size} color={color} />,
+      }}
+    />
+    <Tab.Screen
+      name="operatorProfile"
+      component={ProfileScreen}
+      options={{
+        tabBarLabel: 'Profile',
+        tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="account-circle-outline" size={size} color={color} />,
+      }}
+    />
+    <Tab.Screen
+      name="operatorNotifications"
+      component={NotificationCenterScreen}
+      options={{
+        tabBarLabel: 'Alerts',
+        tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="bell-badge-outline" size={size} color={color} />,
       }}
     />
   </Tab.Navigator>

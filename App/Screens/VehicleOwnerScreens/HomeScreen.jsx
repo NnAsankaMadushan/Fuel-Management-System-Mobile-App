@@ -3,8 +3,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import { useUser } from '../../../context/UserContext';
+import { useAppToast } from '../../../context/ToastContext';
 import { AppTheme } from '../../../constants/Colors';
 import { buildApiUrl, buildMobileRequestConfig } from '../../../utils/apiConfig';
+import { showUnreadNotificationPopup } from '../../../utils/notificationPopup';
 import ActionCard from '../../Components/UI/ActionCard';
 import MetricCard from '../../Components/UI/MetricCard';
 import ScreenShell from '../../Components/UI/ScreenShell';
@@ -14,6 +16,7 @@ const { colors, spacing, radius, shadow } = AppTheme;
 
 const VehicleHomeScreen = ({ navigation }) => {
   const { user } = useUser();
+  const { showToast } = useAppToast();
   const [vehicles, setVehicles] = useState(() => user?.vehicles || []);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -46,9 +49,29 @@ const VehicleHomeScreen = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      setIsLoading(true);
-      loadDashboard();
-    }, [loadDashboard]),
+      let isActive = true;
+
+      const hydrateScreen = async () => {
+        setIsLoading(true);
+        await loadDashboard();
+
+        if (!isActive) {
+          return;
+        }
+
+        try {
+          await showUnreadNotificationPopup(user, showToast);
+        } catch (notificationError) {
+          console.error('Error showing notifications:', notificationError);
+        }
+      };
+
+      hydrateScreen();
+
+      return () => {
+        isActive = false;
+      };
+    }, [loadDashboard, showToast, user]),
   );
 
   const totalRemainingQuota = useMemo(

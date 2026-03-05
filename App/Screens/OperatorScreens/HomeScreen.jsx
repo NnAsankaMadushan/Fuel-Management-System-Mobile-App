@@ -1,10 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Modal, StyleSheet, Text, View } from 'react-native';
 import axios from 'axios';
 import { BarCodeScanner } from 'expo-barcode-scanner';
+import { useFocusEffect } from '@react-navigation/native';
 import { AppTheme } from '../../../constants/Colors';
 import { useUser } from '../../../context/UserContext';
+import { useAppToast } from '../../../context/ToastContext';
 import { buildApiUrl, buildMobileRequestConfig } from '../../../utils/apiConfig';
+import { addLocalNotification } from '../../../utils/localNotifications';
+import { showUnreadNotificationPopup } from '../../../utils/notificationPopup';
 import AppButton from '../../Components/UI/AppButton';
 import AppInput from '../../Components/UI/AppInput';
 import MetricCard from '../../Components/UI/MetricCard';
@@ -49,8 +53,10 @@ const extractVehicleNumber = (value) => {
 
 const HomeScreen = () => {
   const { user } = useUser();
+  const { showToast } = useAppToast();
   const [hasPermission, setHasPermission] = useState(null);
   const [scanned, setScanned] = useState(false);
+  const [isScannerVisible, setIsScannerVisible] = useState(false);
   const [qrPayload, setQrPayload] = useState('');
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [litresPumped, setLitresPumped] = useState('');
@@ -82,16 +88,43 @@ const HomeScreen = () => {
 
   useEffect(() => {
     const initialize = async () => {
-      const { status } = await BarCodeScanner.requestPermissionsAsync();
-      setHasPermission(status === 'granted');
       await loadSummary();
     };
 
     initialize();
   }, [loadSummary]);
 
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const loadNotificationPopup = async () => {
+        try {
+          if (!isActive) {
+            return;
+          }
+
+          await showUnreadNotificationPopup(user, showToast);
+        } catch (notificationError) {
+          console.error('Error showing notifications:', notificationError);
+        }
+      };
+
+      loadNotificationPopup();
+
+      return () => {
+        isActive = false;
+      };
+    }, [showToast, user]),
+  );
+
   const handleBarCodeScanned = ({ data }) => {
+    if (scanned) {
+      return;
+    }
+
     setScanned(true);
+    setIsScannerVisible(false);
     setQrPayload(data);
     setVehicleNumber(extractVehicleNumber(data));
     setFeedback(null);
@@ -129,6 +162,25 @@ const HomeScreen = () => {
     setFeedback(null);
   };
 
+  const openScanner = async () => {
+    if (hasPermission !== true) {
+      const { status } = await BarCodeScanner.requestPermissionsAsync();
+      const granted = status === 'granted';
+      setHasPermission(granted);
+
+      if (!granted) {
+        setFeedback({
+          type: 'error',
+          message: 'Camera permission is required to scan QR codes.',
+        });
+        return;
+      }
+    }
+
+    setScanned(false);
+    setIsScannerVisible(true);
+  };
+
   const handleSubmit = async () => {
     if (!vehicleNumber.trim()) {
       setFeedback({ type: 'error', message: 'Scan the QR code or enter the vehicle number first.' });
@@ -156,9 +208,30 @@ const HomeScreen = () => {
 
       await loadSummary();
 
+      const successMessage = `${response.data?.litresPumped}L of ${response.data?.fuelType} recorded for ${response.data?.vehicleNumber}. Available ${response.data?.fuelType} stock was reduced automatically.`;
+
       setFeedback({
         type: 'success',
-        message: `${response.data?.litresPumped}L of ${response.data?.fuelType} recorded for ${response.data?.vehicleNumber}. Available ${response.data?.fuelType} stock was reduced automatically.`,
+        message: successMessage,
+      });
+
+      await addLocalNotification(user?._id, {
+        type: 'fuel_transaction',
+        title: 'Fuel transaction recorded',
+        message: `${response.data?.litresPumped}L of ${response.data?.fuelType} was recorded for ${response.data?.vehicleNumber} at ${response.data?.stationName}.`,
+        status: 'completed',
+        vehicle: response.data?.vehicle
+          ? {
+              _id: response.data.vehicle,
+              vehicleNumber: response.data.vehicleNumber,
+            }
+          : null,
+      });
+
+      showToast({
+        title: 'Transaction saved',
+        message: successMessage,
+        type: 'success',
       });
 
       handleReset({ keepFeedback: true });
@@ -173,35 +246,6 @@ const HomeScreen = () => {
     }
   };
 
-  let scannerContent;
-
-  if (hasPermission === null) {
-    scannerContent = (
-      <View style={styles.messageCard}>
-        <Text style={styles.messageText}>Requesting camera permission...</Text>
-      </View>
-    );
-  } else if (hasPermission === false) {
-    scannerContent = (
-      <View style={styles.messageCard}>
-        <Text style={[styles.messageText, { color: colors.danger }]}>Camera access is required for QR scanning.</Text>
-      </View>
-    );
-  } else {
-    scannerContent = (
-      <View style={styles.scannerCard}>
-        {!scanned ? (
-          <BarCodeScanner onBarCodeScanned={handleBarCodeScanned} style={styles.scanner} />
-        ) : (
-          <View style={styles.resultBlock}>
-            <Text style={styles.resultLabel}>Last scanned payload</Text>
-            <Text style={styles.resultText}>{qrPayload}</Text>
-          </View>
-        )}
-      </View>
-    );
-  }
-
   return (
     <ScreenShell
       badge="Operator"
@@ -209,12 +253,6 @@ const HomeScreen = () => {
       subtitle="Scan the vehicle QR, enter litres pumped, and the station fuel stock will update automatically."
     >
       <View style={styles.metricGrid}>
-        <MetricCard label="Scanner" value={scanned ? 'Captured' : 'Ready'} style={styles.metricCard} />
-        <MetricCard
-          label="Camera"
-          value={hasPermission === false ? 'Off' : hasPermission === null ? '...' : 'On'}
-          style={styles.metricCard}
-        />
         <MetricCard
           label="Petrol Available"
           value={isSummaryLoading ? '...' : `${summary.totalAvailablePetrol}L`}
@@ -225,25 +263,6 @@ const HomeScreen = () => {
           value={isSummaryLoading ? '...' : `${summary.totalAvailableDiesel}L`}
           style={styles.metricCard}
         />
-        <MetricCard
-          label="Transactions"
-          value={isSummaryLoading ? '...' : `${summary.totalTransactions}`}
-          style={styles.metricCard}
-        />
-        <MetricCard
-          label="Dispensed"
-          value={isSummaryLoading ? '...' : `${summary.totalLitresDispensed}L`}
-          style={styles.metricCard}
-        />
-      </View>
-
-      <View style={styles.sectionBlock}>
-        <SectionHeader
-          badge="QR Scan"
-          title="Camera preview"
-          subtitle={scanned ? 'QR captured. Review details below before recording fuel.' : 'Scan a vehicle QR code.'}
-        />
-        {scannerContent}
       </View>
 
       <View style={styles.formCard}>
@@ -282,6 +301,8 @@ const HomeScreen = () => {
           keyboardType="decimal-pad"
         />
 
+        <AppButton title="Scan QR" onPress={openScanner} variant="secondary" />
+
         {feedback ? (
           <View style={[styles.feedbackCard, feedback.type === 'error' ? styles.errorCard : styles.successCard]}>
             <Text style={[styles.feedbackText, feedback.type === 'error' ? styles.errorText : styles.successText]}>
@@ -297,9 +318,27 @@ const HomeScreen = () => {
             loading={isSubmitting}
             style={styles.primaryAction}
           />
-          <AppButton title="Scan Again" onPress={() => handleReset()} variant="secondary" style={styles.secondaryAction} />
         </View>
       </View>
+
+      <Modal
+        visible={isScannerVisible}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setIsScannerVisible(false)}
+      >
+        <View style={styles.scannerFullScreen}>
+          <BarCodeScanner onBarCodeScanned={scanned ? undefined : handleBarCodeScanned} style={styles.scannerFullPreview} />
+          <View style={styles.scannerOverlay}>
+            <View style={styles.scannerHeaderCard}>
+              <Text style={styles.scannerBadge}>QR Scan</Text>
+              <Text style={styles.scannerTitle}>Scan code</Text>
+              <Text style={styles.scannerSubtitle}>Align the vehicle QR code inside the frame.</Text>
+            </View>
+            <AppButton title="Close scanner" variant="secondary" onPress={() => setIsScannerVisible(false)} />
+          </View>
+        </View>
+      </Modal>
     </ScreenShell>
   );
 };
@@ -312,50 +351,6 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     width: '47%',
-  },
-  sectionBlock: {
-    gap: spacing.md,
-  },
-  scannerCard: {
-    overflow: 'hidden',
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceDark,
-    ...shadow.md,
-  },
-  scanner: {
-    width: '100%',
-    height: 420,
-  },
-  messageCard: {
-    padding: spacing.xl,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceStrong,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadow.sm,
-  },
-  messageText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  resultBlock: {
-    gap: spacing.sm,
-    padding: spacing.xl,
-  },
-  resultLabel: {
-    color: 'rgba(248, 250, 252, 0.74)',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  resultText: {
-    color: colors.textOnDark,
-    fontSize: 16,
-    lineHeight: 24,
   },
   formCard: {
     gap: spacing.md,
@@ -380,9 +375,50 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 180,
   },
-  secondaryAction: {
+  scannerFullScreen: {
     flex: 1,
-    minWidth: 140,
+    backgroundColor: '#000',
+  },
+  scannerFullPreview: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  scannerOverlay: {
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xxl,
+    paddingBottom: spacing.xl,
+  },
+  scannerHeaderCard: {
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.26)',
+    backgroundColor: 'rgba(15, 23, 42, 0.58)',
+  },
+  scannerBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accentSoft,
+    color: colors.accentStrong,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  scannerTitle: {
+    color: colors.textOnDark,
+    fontSize: 32,
+    fontWeight: '800',
+    lineHeight: 38,
+  },
+  scannerSubtitle: {
+    color: 'rgba(248, 250, 252, 0.88)',
+    fontSize: 14,
+    lineHeight: 21,
   },
   feedbackCard: {
     padding: spacing.md,

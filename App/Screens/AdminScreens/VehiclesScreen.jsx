@@ -41,7 +41,17 @@ const VehiclesScreen = () => {
       return vehicles;
     }
 
-    return vehicles.filter((vehicle) => vehicle.vehicleNumber?.toLowerCase().includes(query));
+    return vehicles.filter((vehicle) => {
+      const searchableValues = [
+        vehicle.vehicleNumber,
+        vehicle.vehicleType,
+        vehicle.fuelType,
+        vehicle.vehicleOwnerName,
+        getVehicleStatus(vehicle),
+      ];
+
+      return searchableValues.some((value) => String(value || '').toLowerCase().includes(query));
+    });
   }, [vehicles, searchTerm]);
 
   const pendingCount = vehicles.filter((vehicle) => getVehicleStatus(vehicle) === 'pending').length;
@@ -97,9 +107,9 @@ const VehiclesScreen = () => {
       </View>
 
       <View style={styles.sectionBlock}>
-        <SectionHeader badge="Records" title="Vehicle records" subtitle="Search by vehicle number." />
+        <SectionHeader badge="Records" title="Vehicle records" subtitle="Search by number, type, owner, or status." />
         <View style={styles.searchPanel}>
-          <AppInput placeholder="Search vehicle number..." value={searchTerm} onChangeText={setSearchTerm} />
+          <AppInput placeholder="Search vehicle, owner, status..." value={searchTerm} onChangeText={setSearchTerm} />
         </View>
       </View>
 

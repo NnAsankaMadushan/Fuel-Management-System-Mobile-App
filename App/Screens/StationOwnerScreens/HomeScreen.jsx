@@ -4,7 +4,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import { AppTheme } from '../../../constants/Colors';
 import { useUser } from '../../../context/UserContext';
+import { useAppToast } from '../../../context/ToastContext';
 import { buildApiUrl, buildMobileRequestConfig } from '../../../utils/apiConfig';
+import { showUnreadNotificationPopup } from '../../../utils/notificationPopup';
 import ActionCard from '../../Components/UI/ActionCard';
 import AppButton from '../../Components/UI/AppButton';
 import AppInput from '../../Components/UI/AppInput';
@@ -27,6 +29,7 @@ const buildStockDrafts = (stationList) =>
 
 const HomeScreen = ({ navigation }) => {
   const { user } = useUser();
+  const { showToast } = useAppToast();
   const [stations, setStations] = useState([]);
   const [stockDrafts, setStockDrafts] = useState({});
   const [stationName, setStationName] = useState('');
@@ -38,8 +41,6 @@ const HomeScreen = ({ navigation }) => {
 
   const totalOperators = stations.reduce((sum, station) => sum + (station.stationOperators?.length || 0), 0);
   const totalVehicles = stations.reduce((sum, station) => sum + (station.registeredVehicles?.length || 0), 0);
-  const totalAvailablePetrol = stations.reduce((sum, station) => sum + Number(station.availablePetrol || 0), 0);
-  const totalAvailableDiesel = stations.reduce((sum, station) => sum + Number(station.availableDiesel || 0), 0);
 
   const loadStations = useCallback(async () => {
     try {
@@ -57,9 +58,29 @@ const HomeScreen = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      setIsLoading(true);
-      loadStations();
-    }, [loadStations]),
+      let isActive = true;
+
+      const hydrateScreen = async () => {
+        setIsLoading(true);
+        await loadStations();
+
+        if (!isActive) {
+          return;
+        }
+
+        try {
+          await showUnreadNotificationPopup(user, showToast);
+        } catch (notificationError) {
+          console.error('Error showing notifications:', notificationError);
+        }
+      };
+
+      hydrateScreen();
+
+      return () => {
+        isActive = false;
+      };
+    }, [loadStations, showToast, user]),
   );
 
   const handleRegister = async () => {
@@ -158,8 +179,6 @@ const HomeScreen = ({ navigation }) => {
         <MetricCard label="Stations" value={`${stations.length}`} style={styles.metricCard} />
         <MetricCard label="Operators" value={`${totalOperators}`} style={styles.metricCard} />
         <MetricCard label="Vehicles" value={`${totalVehicles}`} style={styles.metricCard} />
-        <MetricCard label="Petrol Available" value={`${totalAvailablePetrol}L`} style={styles.metricCard} />
-        <MetricCard label="Diesel Available" value={`${totalAvailableDiesel}L`} style={styles.metricCard} />
       </View>
 
       <View style={styles.sectionBlock}>

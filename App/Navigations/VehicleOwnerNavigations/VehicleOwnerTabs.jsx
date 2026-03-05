@@ -8,6 +8,7 @@ import ProfileScreen from '../../Screens/VehicleOwnerScreens/ProfileScreen';
 import VehicleRegisterScreen from '../../Screens/VehicleOwnerScreens/VehicleRegisterScreen';
 import VehicleQrScreen from '../../Screens/VehicleOwnerScreens/VehicleQrScreen';
 import VehicleQuotaScreen from '../../Screens/VehicleOwnerScreens/VehicleQuotaScreen';
+import NotificationCenterScreen from '../../Screens/SharedScreens/NotificationCenterScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -68,6 +69,14 @@ const VehicleOwnerTabs = () => (
       options={{
         tabBarLabel: 'Profile',
         tabBarIcon: ({ color, size }) => <FontAwesome name="user" size={size} color={color} />,
+      }}
+    />
+    <Tab.Screen
+      name="vehicleNotifications"
+      component={NotificationCenterScreen}
+      options={{
+        tabBarLabel: 'Alerts',
+        tabBarIcon: ({ color, size }) => <FontAwesome name="bell-o" size={size} color={color} />,
       }}
     />
   </Tab.Navigator>

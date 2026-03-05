@@ -71,7 +71,7 @@ const OperatorsScreen = () => {
       setPhoneNumber('');
       setNicNumber('');
       fetchOperators();
-      Alert.alert('Success', 'Operator added successfully.');
+      Alert.alert('Success', 'Operator added successfully. They must change this temporary password on first login.');
     } catch (error) {
       console.error('Error adding operator:', error);
       Alert.alert('Error', error.response?.data?.message || 'Could not add operator.');
@@ -141,7 +141,7 @@ const OperatorsScreen = () => {
             <View style={styles.formStack}>
               <AppInput placeholder="Name" value={name} onChangeText={setName} />
               <AppInput placeholder="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-              <AppInput placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
+              <AppInput label="Temporary password" placeholder="Set an initial password" value={password} onChangeText={setPassword} secureTextEntry />
               <AppInput placeholder="Phone Number" value={phoneNumber} onChangeText={setPhoneNumber} keyboardType="phone-pad" />
               <AppInput placeholder="NIC Number" value={nicNumber} onChangeText={setNicNumber} autoCapitalize="characters" />
             </View>

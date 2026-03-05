@@ -11,11 +11,15 @@ import ScreenShell from './ScreenShell';
 const { colors, spacing, radius, shadow } = AppTheme;
 
 const ProfileScreenBase = ({ roleLabel }) => {
-  const { logoutUser, user, updateUser } = useUser();
+  const { logoutUser, user, updateUser, changePassword } = useUser();
   const [isEditing, setIsEditing] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   const roleAccent = RoleAccents[user?.role] || colors.accent;
@@ -39,6 +43,37 @@ const ProfileScreenBase = ({ roleLabel }) => {
     } catch (error) {
       console.error('Error updating profile:', error);
       Alert.alert('Error', error.response?.data?.message || 'Failed to update profile.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const resetPasswordForm = () => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
+  const handlePasswordChange = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Missing Fields', 'Current password, new password, and confirmation are required.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Mismatch', 'New password and confirmation do not match.');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const response = await changePassword(currentPassword, newPassword);
+      resetPasswordForm();
+      setIsChangingPassword(false);
+      Alert.alert('Success', response?.message || 'Password changed successfully.');
+    } catch (error) {
+      console.error('Error changing password:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to change password.');
     } finally {
       setIsSaving(false);
     }
@@ -75,6 +110,42 @@ const ProfileScreenBase = ({ roleLabel }) => {
             <AppButton title="Cancel" onPress={() => setIsEditing(false)} variant="secondary" style={styles.buttonHalf} />
           </View>
         </View>
+      ) : isChangingPassword ? (
+        <View style={styles.formCard}>
+          <AppInput
+            label="Current password"
+            value={currentPassword}
+            onChangeText={setCurrentPassword}
+            placeholder="Enter current password"
+            secureTextEntry
+          />
+          <AppInput
+            label="New password"
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholder="Enter new password"
+            secureTextEntry
+          />
+          <AppInput
+            label="Confirm new password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="Re-enter new password"
+            secureTextEntry
+          />
+          <View style={styles.buttonRow}>
+            <AppButton title="Update Password" onPress={handlePasswordChange} loading={isSaving} style={styles.buttonHalf} />
+            <AppButton
+              title="Cancel"
+              onPress={() => {
+                resetPasswordForm();
+                setIsChangingPassword(false);
+              }}
+              variant="secondary"
+              style={styles.buttonHalf}
+            />
+          </View>
+        </View>
       ) : (
         <>
           <View style={styles.summaryCard}>
@@ -97,7 +168,26 @@ const ProfileScreenBase = ({ roleLabel }) => {
               <Text style={styles.detailValue}>{user?.phoneNumber || 'Not available'}</Text>
             </View>
           </View>
-          <AppButton title="Edit Profile" onPress={() => setIsEditing(true)} variant="secondary" />
+          <View style={styles.buttonRow}>
+            <AppButton
+              title="Edit Profile"
+              onPress={() => {
+                setIsChangingPassword(false);
+                setIsEditing(true);
+              }}
+              variant="secondary"
+              style={styles.buttonHalf}
+            />
+            <AppButton
+              title="Change Password"
+              onPress={() => {
+                setIsEditing(false);
+                setIsChangingPassword(true);
+              }}
+              variant="secondary"
+              style={styles.buttonHalf}
+            />
+          </View>
         </>
       )}
 

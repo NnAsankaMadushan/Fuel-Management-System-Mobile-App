@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import { useUser } from '../../../context/UserContext';
@@ -7,7 +7,6 @@ import { AppTheme } from '../../../constants/Colors';
 import { buildApiUrl, buildMobileRequestConfig } from '../../../utils/apiConfig';
 import MetricCard from '../../Components/UI/MetricCard';
 import ScreenShell from '../../Components/UI/ScreenShell';
-import SectionHeader from '../../Components/UI/SectionHeader';
 
 const { colors, spacing, radius, shadow } = AppTheme;
 
@@ -57,8 +56,6 @@ const VehicleLogsScreen = () => {
       badge="Logs"
       title="Vehicle logs"
       subtitle="Review past fuel transactions across your registered vehicles."
-      scroll={false}
-      contentContainerStyle={styles.shellBody}
     >
       <View style={styles.metricGrid}>
         <MetricCard label="Entries" value={`${logs.length}`} style={styles.metricCard} />
@@ -71,25 +68,18 @@ const VehicleLogsScreen = () => {
         </View>
       ) : null}
 
-      <View style={styles.sectionBlock}>
-        <SectionHeader
-          badge="History"
-          title="Transactions"
-          subtitle="Latest recorded vehicle fuel events."
-        />
-      </View>
-
       {isLoading ? (
         <View style={styles.feedbackCard}>
           <Text style={styles.feedbackText}>Loading vehicle logs...</Text>
         </View>
+      ) : logs.length === 0 ? (
+        <View style={styles.feedbackCard}>
+          <Text style={styles.feedbackText}>No vehicle transactions were found yet.</Text>
+        </View>
       ) : (
-        <FlatList
-          data={logs}
-          keyExtractor={(item) => item._id}
-          contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <View style={styles.logCard}>
+        <View style={styles.listContent}>
+          {logs.map((item) => (
+            <View key={item._id} style={styles.logCard}>
               <View style={styles.logTop}>
                 <Text style={styles.logVehicle}>{item.vehicleNumber || 'Unknown vehicle'}</Text>
                 <Text style={styles.logLitres}>{item.litresPumped}L</Text>
@@ -102,22 +92,14 @@ const VehicleLogsScreen = () => {
                 {item.fuelType || 'Fuel'} - {new Date(item.date).toLocaleString()}
               </Text>
             </View>
-          )}
-          ListEmptyComponent={(
-            <View style={styles.feedbackCard}>
-              <Text style={styles.feedbackText}>No vehicle transactions were found yet.</Text>
-            </View>
-          )}
-        />
+          ))}
+        </View>
       )}
     </ScreenShell>
   );
 };
 
 const styles = StyleSheet.create({
-  shellBody: {
-    flex: 1,
-  },
   metricGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -125,9 +107,6 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     width: '47%',
-  },
-  sectionBlock: {
-    gap: spacing.md,
   },
   listContent: {
     gap: spacing.md,

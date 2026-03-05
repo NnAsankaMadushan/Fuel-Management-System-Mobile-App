@@ -9,6 +9,7 @@ import OperatorsScreen from '../../Screens/StationOwnerScreens/OperatorsScreen';
 import ProfileScreen from '../../Screens/StationOwnerScreens/ProfileScreen';
 import StationFuelSummaryScreen from '../../Screens/SharedScreens/StationFuelSummaryScreen';
 import StationLogsScreen from '../../Screens/SharedScreens/StationLogsScreen';
+import NotificationCenterScreen from '../../Screens/SharedScreens/NotificationCenterScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -69,6 +70,14 @@ const StationOwnerTabs = () => (
       options={{
         tabBarLabel: 'Profile',
         tabBarIcon: ({ color, size }) => <FontAwesome name="user" size={size} color={color} />,
+      }}
+    />
+    <Tab.Screen
+      name="stationNotifications"
+      component={NotificationCenterScreen}
+      options={{
+        tabBarLabel: 'Alerts',
+        tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="bell-badge-outline" size={size} color={color} />,
       }}
     />
   </Tab.Navigator>
