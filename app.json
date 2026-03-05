@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "fuelQuotaMobileApp",
+    "name": "Fuel Plus",
     "slug": "fuel-management",
     "scheme": "fuelQuotaMobileApp",
     "version": "1.0.0",
@@ -8,7 +8,7 @@
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/adaptive-icon.png",
+      "image": "./assets/images/splash-icon-small.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
