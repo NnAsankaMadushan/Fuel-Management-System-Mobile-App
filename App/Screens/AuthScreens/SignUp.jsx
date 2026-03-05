@@ -28,7 +28,13 @@ const SignUp = ({ navigation }) => {
 
     try {
       setIsSubmitting(true);
-      await signupUser(name, email, password, PUBLIC_SIGNUP_ROLE, phoneNumber, nicNumber);
+      const response = await signupUser(name, email, password, PUBLIC_SIGNUP_ROLE, phoneNumber, nicNumber);
+      navigation.navigate('VerifyEmail', {
+        email,
+        verificationContext: 'signup',
+        signupMessage: response?.message || 'OTP sent. Verify to complete account creation.',
+        debugOtp: response?.debugOtp,
+      });
     } catch (error) {
       Alert.alert(
         'Signup Failed',

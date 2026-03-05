@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppTheme } from '../../../constants/Colors';
 import { useUser } from '../../../context/UserContext';
@@ -10,11 +10,18 @@ import ScreenShell from '../../Components/UI/ScreenShell';
 const { colors, spacing, radius, shadow } = AppTheme;
 const brandIcon = require('../../../assets/images/icon.png');
 
-const Login = ({ navigation }) => {
+const Login = ({ navigation, route }) => {
   const { loginUser } = useUser();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const prefilledEmail = route?.params?.email;
+    if (prefilledEmail && typeof prefilledEmail === 'string') {
+      setEmail(prefilledEmail);
+    }
+  }, [route?.params?.email]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -26,6 +33,15 @@ const Login = ({ navigation }) => {
       setIsSubmitting(true);
       await loginUser(email, password);
     } catch (error) {
+      if (error?.response?.data?.code === 'EMAIL_NOT_VERIFIED') {
+        navigation.navigate('VerifyEmail', {
+          email,
+          verificationContext: 'existing',
+          serverMessage: error?.response?.data?.message || 'Email verification is required before logging in.',
+        });
+        return;
+      }
+
       Alert.alert(
         'Login Failed',
         getApiErrorMessage(

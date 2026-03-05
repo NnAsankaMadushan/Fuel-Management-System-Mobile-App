@@ -30,5 +30,6 @@ export const normalizeUserPayload = (user) => {
     ...user,
     role: normalizeUserRole(user.role),
     mustChangePassword: Boolean(user.mustChangePassword),
+    emailVerified: user.emailVerified !== false,
   };
 };

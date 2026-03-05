@@ -49,14 +49,70 @@ export const UserProvider = ({ children }) => {
 
   const signupUser = async (name, email, password, role, phoneNumber, nicNumber) => {
     try {
-      await axios.post(
+      const response = await axios.post(
         buildApiUrl('/api/users/signup'),
         { name, email, password, role, phoneNumber, nicNumber },
         buildMobileRequestConfig(),
       );
-      return await loginUser(email, password);
+      return response.data;
     } catch (error) {
       console.error('Signup error:', error);
+      throw error;
+    }
+  };
+
+  const resendSignupOtp = async (email) => {
+    try {
+      const response = await axios.post(
+        buildApiUrl('/api/users/signup/resend-otp'),
+        { email },
+        buildMobileRequestConfig(),
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Resend signup OTP error:', error);
+      throw error;
+    }
+  };
+
+  const confirmSignupUser = async (email, otp) => {
+    try {
+      const response = await axios.post(
+        buildApiUrl('/api/users/signup/confirm'),
+        { email, otp },
+        buildMobileRequestConfig(),
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Confirm signup OTP error:', error);
+      throw error;
+    }
+  };
+
+  const requestEmailVerificationOtp = async (email) => {
+    try {
+      const response = await axios.post(
+        buildApiUrl('/api/users/email-verification/request-otp'),
+        { email },
+        buildMobileRequestConfig(),
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Request email OTP error:', error);
+      throw error;
+    }
+  };
+
+  const verifyEmailVerificationOtp = async (email, otp) => {
+    try {
+      const response = await axios.post(
+        buildApiUrl('/api/users/email-verification/verify-otp'),
+        { email, otp },
+        buildMobileRequestConfig(),
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Verify email OTP error:', error);
       throw error;
     }
   };
@@ -113,7 +169,20 @@ export const UserProvider = ({ children }) => {
   };
 
   return (
-    <UserContext.Provider value={{ user, loginUser, signupUser, logoutUser, updateUser, changePassword }}>
+    <UserContext.Provider
+      value={{
+        user,
+        loginUser,
+        signupUser,
+        resendSignupOtp,
+        confirmSignupUser,
+        requestEmailVerificationOtp,
+        verifyEmailVerificationOtp,
+        logoutUser,
+        updateUser,
+        changePassword,
+      }}
+    >
       {children}
     </UserContext.Provider>
   );
