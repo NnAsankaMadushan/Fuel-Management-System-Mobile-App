@@ -6,6 +6,8 @@ import { AppTheme } from '../../../constants/Colors';
 import HomeScreen from '../../Screens/VehicleOwnerScreens/HomeScreen';
 import ProfileScreen from '../../Screens/VehicleOwnerScreens/ProfileScreen';
 import VehicleRegisterScreen from '../../Screens/VehicleOwnerScreens/VehicleRegisterScreen';
+import VehicleQrScreen from '../../Screens/VehicleOwnerScreens/VehicleQrScreen';
+import VehicleQuotaScreen from '../../Screens/VehicleOwnerScreens/VehicleQuotaScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -42,6 +44,22 @@ const VehicleOwnerTabs = () => (
       options={{
         tabBarLabel: 'Register',
         tabBarIcon: ({ color, size }) => <FontAwesome name="plus-circle" size={size} color={color} />,
+      }}
+    />
+    <Tab.Screen
+      name="vehicleQr"
+      component={VehicleQrScreen}
+      options={{
+        tabBarLabel: 'Vehicle',
+        tabBarIcon: ({ color, size }) => <FontAwesome name="qrcode" size={size} color={color} />,
+      }}
+    />
+    <Tab.Screen
+      name="vehicleQuota"
+      component={VehicleQuotaScreen}
+      options={{
+        tabBarLabel: 'Quota',
+        tabBarIcon: ({ color, size }) => <FontAwesome name="tint" size={size} color={color} />,
       }}
     />
     <Tab.Screen
