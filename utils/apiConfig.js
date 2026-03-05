@@ -1,8 +1,10 @@
+import { API_URL as ENV_API_URL } from '@env';
+
 const MOBILE_CLIENT_HEADERS = {
   'X-Client-Platform': 'mobile',
 };
 
-const API_URL = 'https://fuel-management-system-backend.vercel.app';
+const API_URL = ENV_API_URL;
 
 const normalizeBaseUrl = (value) => String(value || '').trim().replace(/\/+$/, '');
 export const API_BASE_URL = normalizeBaseUrl(API_URL);
