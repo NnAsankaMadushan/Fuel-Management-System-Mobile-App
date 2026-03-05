@@ -14,7 +14,8 @@ const MetricCard = ({ label, value, note, style }) => (
 
 const styles = StyleSheet.create({
   card: {
-    flex: 1,
+    flexGrow: 0,
+    flexShrink: 0,
     minWidth: 0,
     gap: 6,
     padding: spacing.lg,

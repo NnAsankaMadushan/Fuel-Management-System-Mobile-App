@@ -20,19 +20,20 @@ const SignUp = ({ navigation }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [nicNumber, setNicNumber] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('vehicle_owner');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSignup = async () => {
-    if (!name || !email || !phoneNumber || !password) {
+    if (!name || !email || !phoneNumber || !nicNumber || !password) {
       Alert.alert('Missing Fields', 'Fill in all required details before continuing.');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      await signupUser(name, email, password, role, phoneNumber);
+      await signupUser(name, email, password, role, phoneNumber, nicNumber);
     } catch (error) {
       Alert.alert(
         'Signup Failed',
@@ -91,6 +92,13 @@ const SignUp = ({ navigation }) => {
           value={phoneNumber}
           onChangeText={setPhoneNumber}
           keyboardType="phone-pad"
+        />
+        <AppInput
+          label="NIC number"
+          placeholder="200012345678 or 123456789V"
+          value={nicNumber}
+          onChangeText={setNicNumber}
+          autoCapitalize="characters"
         />
         <AppInput label="Password" placeholder="Create a password" value={password} onChangeText={setPassword} secureTextEntry />
         <AppButton title="Create Account" onPress={handleSignup} loading={isSubmitting} />

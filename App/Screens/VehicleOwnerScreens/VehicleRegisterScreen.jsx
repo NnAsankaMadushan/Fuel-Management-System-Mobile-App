@@ -86,7 +86,7 @@ const VehicleRegisterScreen = ({ navigation }) => {
       setResponseMessage(message || 'Vehicle registered successfully. Redirecting to your dashboard...');
 
       globalThis.setTimeout(() => {
-        navigation.navigate('vehicleHome');
+        navigation.navigate(user?.role === 'station_operator' ? 'operatorScanner' : 'vehicleHome');
       }, 1200);
     } catch (error) {
       setIsError(true);

@@ -22,6 +22,7 @@ const OperatorsScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [nicNumber, setNicNumber] = useState('');
 
   const fetchOperators = useCallback(async () => {
     try {
@@ -46,7 +47,7 @@ const OperatorsScreen = () => {
   }, [operators, searchQuery]);
 
   const addOperator = async () => {
-    if (!name || !email || !password || !phoneNumber) {
+    if (!name || !email || !password || !phoneNumber || !nicNumber) {
       Alert.alert('Missing Fields', 'All operator fields are required.');
       return;
     }
@@ -59,6 +60,7 @@ const OperatorsScreen = () => {
           email,
           password,
           phoneNumber,
+          nicNumber,
         },
         buildMobileRequestConfig(user),
       );
@@ -67,6 +69,7 @@ const OperatorsScreen = () => {
       setEmail('');
       setPassword('');
       setPhoneNumber('');
+      setNicNumber('');
       fetchOperators();
       Alert.alert('Success', 'Operator added successfully.');
     } catch (error) {
@@ -120,6 +123,7 @@ const OperatorsScreen = () => {
             <Text style={styles.cardTitle}>{item.name}</Text>
             <Text style={styles.cardMeta}>{item.email}</Text>
             <Text style={styles.cardMeta}>{item.phoneNumber}</Text>
+            <Text style={styles.cardMeta}>{item.nicNumber}</Text>
           </Pressable>
         )}
         ListEmptyComponent={
@@ -139,6 +143,7 @@ const OperatorsScreen = () => {
               <AppInput placeholder="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
               <AppInput placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
               <AppInput placeholder="Phone Number" value={phoneNumber} onChangeText={setPhoneNumber} keyboardType="phone-pad" />
+              <AppInput placeholder="NIC Number" value={nicNumber} onChangeText={setNicNumber} autoCapitalize="characters" />
             </View>
             <View style={styles.buttonStack}>
               <AppButton title="Add Operator" onPress={addOperator} />
@@ -156,6 +161,7 @@ const OperatorsScreen = () => {
                 <Text style={styles.modalTitle}>{selectedOperator.name}</Text>
                 <Text style={styles.cardMeta}>{selectedOperator.email}</Text>
                 <Text style={styles.cardMeta}>{selectedOperator.phoneNumber}</Text>
+                <Text style={styles.cardMeta}>{selectedOperator.nicNumber}</Text>
                 <View style={styles.buttonStack}>
                   <AppButton title="Remove Operator" onPress={() => removeOperator(selectedOperator._id)} variant="danger" />
                   <AppButton title="Close" onPress={() => setSelectedOperator(null)} variant="secondary" />

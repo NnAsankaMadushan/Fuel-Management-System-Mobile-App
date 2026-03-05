@@ -47,11 +47,11 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  const signupUser = async (name, email, password, role, phoneNumber) => {
+  const signupUser = async (name, email, password, role, phoneNumber, nicNumber) => {
     try {
       await axios.post(
         buildApiUrl('/api/users/signup'),
-        { name, email, password, role, phoneNumber },
+        { name, email, password, role, phoneNumber, nicNumber },
         buildMobileRequestConfig(),
       );
       return await loginUser(email, password);

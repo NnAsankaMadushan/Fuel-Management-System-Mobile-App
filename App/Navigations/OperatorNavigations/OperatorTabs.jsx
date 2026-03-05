@@ -6,6 +6,7 @@ import { AppTheme } from '../../../constants/Colors';
 import HomeScreen from '../../Screens/OperatorScreens/HomeScreen';
 import StationFuelSummaryScreen from '../../Screens/SharedScreens/StationFuelSummaryScreen';
 import StationLogsScreen from '../../Screens/SharedScreens/StationLogsScreen';
+import VehicleRegisterScreen from '../../Screens/VehicleOwnerScreens/VehicleRegisterScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -42,6 +43,16 @@ const OperatorTabs = () => (
       options={{
         tabBarLabel: 'Logs',
         tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="history" size={size} color={color} />,
+      }}
+    />
+    <Tab.Screen
+      name="operatorVehicleRegister"
+      component={VehicleRegisterScreen}
+      options={{
+        tabBarLabel: 'Register',
+        tabBarIcon: ({ color, size }) => (
+          <MaterialCommunityIcons name="car-plus" size={size} color={color} />
+        ),
       }}
     />
     <Tab.Screen
