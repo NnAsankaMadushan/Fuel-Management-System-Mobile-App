@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { AppTheme } from '../../../constants/Colors';
 
-const { colors, spacing } = AppTheme;
+const { colors, spacing, shadow } = AppTheme;
 
 const AppSelect = ({
   label,
@@ -38,15 +38,17 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
+    letterSpacing: 0.2,
   },
   selectShell: {
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(24, 33, 47, 0.12)',
-    backgroundColor: colors.surfaceStrong,
+    borderColor: colors.border,
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
     overflow: 'hidden',
+    ...shadow.sm,
   },
   select: {
     color: colors.text,

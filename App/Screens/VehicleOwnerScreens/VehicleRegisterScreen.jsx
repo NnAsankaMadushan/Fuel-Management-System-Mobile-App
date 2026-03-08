@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import axios from 'axios';
 import { AppTheme } from '../../../constants/Colors';
 import { useUser } from '../../../context/UserContext';
@@ -36,8 +36,6 @@ const VehicleRegisterScreen = ({ navigation }) => {
     chassisNumber: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [responseMessage, setResponseMessage] = useState('');
-  const [isError, setIsError] = useState(false);
 
   const handleRegistryDetailChange = (field, value) => {
     setRegistryDetails((current) => ({
@@ -50,15 +48,12 @@ const VehicleRegisterScreen = ({ navigation }) => {
     const formattedVehicleNumber = vehicleNumber.trim();
 
     if (!formattedVehicleNumber || !vehicleType || !fuelType) {
-      setIsError(true);
-      setResponseMessage('Vehicle number, vehicle type, and fuel type are required.');
+      Alert.alert('Missing Fields', 'Vehicle number, vehicle type, and fuel type are required.');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      setIsError(false);
-      setResponseMessage('');
 
       const response = await axios.post(
         buildApiUrl('/api/vehicles/register'),
@@ -83,14 +78,18 @@ const VehicleRegisterScreen = ({ navigation }) => {
         engineNumber: '',
         chassisNumber: '',
       });
-      setResponseMessage(message || 'Vehicle registered successfully. Redirecting to your dashboard...');
+      Alert.alert('Success', message || 'Vehicle registered successfully. Redirecting to your dashboard...');
 
       globalThis.setTimeout(() => {
-        navigation.navigate(user?.role === 'station_operator' ? 'operatorScanner' : 'vehicleHome');
+        if (user?.role === 'station_operator') {
+          navigation.navigate('operatorTabs', { screen: 'operatorScanner' });
+          return;
+        }
+
+        navigation.navigate('vehicleHome');
       }, 1200);
     } catch (error) {
-      setIsError(true);
-      setResponseMessage(error.response?.data?.message || 'Error registering vehicle.');
+      Alert.alert('Error', error.response?.data?.message || 'Error registering vehicle.');
     } finally {
       setIsSubmitting(false);
     }
@@ -150,14 +149,6 @@ const VehicleRegisterScreen = ({ navigation }) => {
         <View style={styles.buttonStack}>
           <AppButton title="Register Vehicle" onPress={handleRegister} loading={isSubmitting} />
         </View>
-
-        {responseMessage ? (
-          <View style={[styles.responseCard, isError ? styles.errorCard : styles.successCard]}>
-            <Text style={[styles.responseText, isError ? styles.errorText : styles.successText]}>
-              {responseMessage}
-            </Text>
-          </View>
-        ) : null}
       </View>
     </ScreenShell>
   );
@@ -194,28 +185,6 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 14,
     lineHeight: 22,
-  },
-  responseCard: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-  },
-  successCard: {
-    backgroundColor: colors.successSoft,
-  },
-  errorCard: {
-    backgroundColor: colors.dangerSoft,
-  },
-  responseText: {
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 22,
-  },
-  successText: {
-    color: colors.success,
-  },
-  errorText: {
-    color: colors.danger,
   },
 });
 

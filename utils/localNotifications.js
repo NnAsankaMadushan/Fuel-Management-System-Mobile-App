@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { sendDeviceNotification } from './deviceNotifications';
 
 const STORAGE_PREFIX = 'fuelplus_local_notifications';
 const MAX_NOTIFICATIONS = 200;
@@ -31,6 +32,7 @@ const normalizeNotification = (notification = {}) => {
     type: String(notification.type || 'fuel_transaction'),
     status: String(notification.status || 'completed'),
     isRead: Boolean(notification.isRead),
+    isDeliveredToDevice: Boolean(notification.isDeliveredToDevice),
     createdAt,
     vehicle: notification.vehicle || null,
   };
@@ -65,14 +67,95 @@ const writeLocalNotifications = async (userId, notifications = []) => {
   return normalizedList;
 };
 
-const addLocalNotification = async (userId, notification = {}) => {
+const upsertLocalNotifications = async (userId, notifications = []) => {
+  const normalizedUserId = String(userId || '').trim();
+  if (!normalizedUserId) {
+    return [];
+  }
+
+  const mergedById = new Map();
+
+  for (const currentNotification of await readLocalNotifications(normalizedUserId)) {
+    const normalizedCurrent = normalizeNotification(currentNotification);
+    mergedById.set(normalizedCurrent._id, normalizedCurrent);
+  }
+
+  for (const incomingNotification of Array.isArray(notifications) ? notifications : []) {
+    const normalizedIncoming = normalizeNotification(incomingNotification);
+    mergedById.set(normalizedIncoming._id, normalizedIncoming);
+  }
+
+  return writeLocalNotifications(normalizedUserId, [...mergedById.values()]);
+};
+
+const markLocalNotificationAsDelivered = async (userId, notificationId) => {
+  const normalizedNotificationId = String(notificationId || '').trim();
+  if (!normalizedNotificationId) {
+    return { notifications: await readLocalNotifications(userId), updated: false };
+  }
+
+  let updated = false;
+  const nextNotifications = (await readLocalNotifications(userId)).map((notification) => {
+    if (notification._id !== normalizedNotificationId || notification.isDeliveredToDevice) {
+      return notification;
+    }
+
+    updated = true;
+    return {
+      ...notification,
+      isDeliveredToDevice: true,
+    };
+  });
+
+  return {
+    notifications: await writeLocalNotifications(userId, nextNotifications),
+    updated,
+  };
+};
+
+const addLocalNotification = async (
+  userId,
+  notification = {},
+  { notifyDevice = true } = {},
+) => {
   const currentNotifications = await readLocalNotifications(userId);
   const nextNotification = normalizeNotification(notification);
   const deduplicatedNotifications = currentNotifications.filter(
     (entry) => entry._id !== nextNotification._id,
   );
 
-  return writeLocalNotifications(userId, [nextNotification, ...deduplicatedNotifications]);
+  const savedNotifications = await writeLocalNotifications(userId, [
+    nextNotification,
+    ...deduplicatedNotifications,
+  ]);
+
+  if (!notifyDevice) {
+    return savedNotifications;
+  }
+
+  try {
+    const deliveryResult = await sendDeviceNotification({
+      title: nextNotification.title,
+      body: nextNotification.message,
+      data: {
+        notificationId: nextNotification._id,
+        type: nextNotification.type,
+        status: nextNotification.status,
+      },
+    });
+
+    if (deliveryResult?.scheduled) {
+      const { notifications: deliveredNotifications } = await markLocalNotificationAsDelivered(
+        userId,
+        nextNotification._id,
+      );
+      return deliveredNotifications;
+    }
+  } catch (error) {
+    console.error('Failed to deliver local notification to device:', error);
+  }
+
+  return savedNotifications;
 };
 
 const markLocalNotificationAsRead = async (userId, notificationId) => {
@@ -123,6 +206,8 @@ const markAllLocalNotificationsAsRead = async (userId) => {
 export {
   addLocalNotification,
   markAllLocalNotificationsAsRead,
+  markLocalNotificationAsDelivered,
   markLocalNotificationAsRead,
   readLocalNotifications,
+  upsertLocalNotifications,
 };

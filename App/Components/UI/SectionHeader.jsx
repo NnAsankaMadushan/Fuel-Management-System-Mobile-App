@@ -6,12 +6,14 @@ const { colors, spacing, radius } = AppTheme;
 
 const SectionHeader = ({ badge, title, subtitle, trailing }) => (
   <View style={styles.header}>
-    <View style={styles.copy}>
-      {badge ? <Text style={styles.badge}>{badge}</Text> : null}
-      {title ? <Text style={styles.title}>{title}</Text> : null}
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+    <View style={styles.topRow}>
+      <View style={styles.copy}>
+        {badge ? <Text style={styles.badge}>{badge}</Text> : null}
+        {title ? <Text style={styles.title}>{title}</Text> : null}
+        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      </View>
+      {trailing ? <View style={styles.trailing}>{trailing}</View> : null}
     </View>
-    {trailing ? <View style={styles.trailing}>{trailing}</View> : null}
   </View>
 );
 
@@ -19,11 +21,20 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.sm,
   },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    flexWrap: 'wrap',
+  },
   copy: {
     gap: 4,
+    flex: 1,
   },
   trailing: {
     alignSelf: 'flex-start',
+    maxWidth: '100%',
   },
   badge: {
     alignSelf: 'flex-start',
@@ -39,7 +50,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 22,
+    fontFamily: 'Georgia',
+    fontSize: 23,
     fontWeight: '800',
     lineHeight: 28,
   },

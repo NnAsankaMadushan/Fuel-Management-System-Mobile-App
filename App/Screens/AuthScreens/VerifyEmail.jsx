@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppTheme } from '../../../constants/Colors';
 import { useUser } from '../../../context/UserContext';
@@ -30,6 +30,8 @@ const VerifyEmail = ({ navigation, route }) => {
   const [otp, setOtp] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const redirectTimerRef = useRef(null);
   const [infoMessage, setInfoMessage] = useState(
     route?.params?.signupMessage ||
       route?.params?.serverMessage ||
@@ -59,6 +61,15 @@ const VerifyEmail = ({ navigation, route }) => {
     verificationContext,
   ]);
 
+  useEffect(
+    () => () => {
+      if (redirectTimerRef.current) {
+        globalThis.clearTimeout(redirectTimerRef.current);
+      }
+    },
+    [],
+  );
+
   const handleVerify = async () => {
     if (!email || !otp) {
       Alert.alert('Missing Fields', 'Enter both email and OTP.');
@@ -70,12 +81,16 @@ const VerifyEmail = ({ navigation, route }) => {
       const response = verificationContext === 'signup'
         ? await confirmSignupUser(email, otp)
         : await verifyEmailVerificationOtp(email, otp);
-      Alert.alert('Email Verified', response?.message || 'Your email was verified successfully.', [
-        {
-          text: 'Continue',
-          onPress: () => navigation.navigate('Login', { email }),
-        },
-      ]);
+      if (redirectTimerRef.current) {
+        globalThis.clearTimeout(redirectTimerRef.current);
+      }
+      setIsRedirecting(true);
+      Alert.alert('Email Verified', response?.message || 'Your email was verified successfully.');
+      redirectTimerRef.current = globalThis.setTimeout(() => {
+        redirectTimerRef.current = null;
+        setIsRedirecting(false);
+        navigation.navigate('Login', { email });
+      }, 1200);
     } catch (error) {
       Alert.alert(
         'Verification Failed',
@@ -141,7 +156,11 @@ const VerifyEmail = ({ navigation, route }) => {
           keyboardType="number-pad"
           maxLength={6}
         />
-        <AppButton title="Verify Email" onPress={handleVerify} loading={isVerifying} />
+        <AppButton
+          title={isRedirecting ? 'Redirecting...' : 'Verify Email'}
+          onPress={handleVerify}
+          loading={isVerifying || isRedirecting}
+        />
         <AppButton title="Resend OTP" onPress={handleResendOtp} variant="secondary" loading={isResending} />
       </View>
 

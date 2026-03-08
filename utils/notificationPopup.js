@@ -1,4 +1,6 @@
-import { markLocalNotificationAsRead, readLocalNotifications } from './localNotifications';
+import { markLocalNotificationAsDelivered, readLocalNotifications } from './localNotifications';
+import { sendDeviceNotification } from './deviceNotifications';
+import { syncRemoteNotificationsToLocal } from './notificationSync';
 
 const SUPPORTED_NOTIFICATION_ROLES = new Set([
   'vehicle_owner',
@@ -24,18 +26,30 @@ const getSeenNotificationsForUser = (userId) => {
   return shownNotificationIdsByUser.get(key);
 };
 
-export const showUnreadNotificationPopup = async (user, showToast) => {
+export const showUnreadNotificationPopup = async (user) => {
   if (!user?._id || !roleSupportsNotificationPopup(user?.role)) {
     return null;
   }
 
-  const notifications = await readLocalNotifications(user._id);
+  let notifications = [];
+
+  if (user?.token) {
+    try {
+      notifications = await syncRemoteNotificationsToLocal(user);
+    } catch (error) {
+      console.error('Failed to sync remote notifications before popup display:', error);
+      notifications = await readLocalNotifications(user._id);
+    }
+  } else {
+    notifications = await readLocalNotifications(user._id);
+  }
 
   const seenNotificationIds = getSeenNotificationsForUser(user?._id);
   const unreadNotification = notifications.find(
     (notification) =>
       notification &&
       !notification.isRead &&
+      !notification.isDeliveredToDevice &&
       notification._id &&
       !seenNotificationIds.has(notification._id),
   );
@@ -46,17 +60,23 @@ export const showUnreadNotificationPopup = async (user, showToast) => {
 
   seenNotificationIds.add(unreadNotification._id);
 
-  if (typeof showToast === 'function') {
-    showToast({
-      title: unreadNotification.title || 'Notification',
-      message: unreadNotification.message || 'You have a new update.',
-      type: 'info',
-      duration: 5200,
-    });
-  }
-
   try {
-    await markLocalNotificationAsRead(user._id, unreadNotification._id);
+    const deliveryResult = await sendDeviceNotification({
+      title: unreadNotification.title || 'Notification',
+      body: unreadNotification.message || 'You have a new update.',
+      data: {
+        notificationId: unreadNotification._id,
+        type: unreadNotification.type,
+        status: unreadNotification.status,
+      },
+    });
+
+    if (!deliveryResult?.scheduled) {
+      seenNotificationIds.delete(unreadNotification._id);
+      return null;
+    }
+
+    await markLocalNotificationAsDelivered(user._id, unreadNotification._id);
   } catch (error) {
     seenNotificationIds.delete(unreadNotification._id);
     throw error;
@@ -64,6 +84,6 @@ export const showUnreadNotificationPopup = async (user, showToast) => {
 
   return {
     ...unreadNotification,
-    isRead: true,
+    isDeliveredToDevice: true,
   };
 };

@@ -1,7 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import axios from 'axios';
 import { AppTheme } from '../../../constants/Colors';
+import { useThemedAlert } from '../../../context/ThemedAlertContext';
 import { useUser } from '../../../context/UserContext';
 import { buildApiUrl, buildMobileRequestConfig } from '../../../utils/apiConfig';
 import AppButton from '../../Components/UI/AppButton';
@@ -11,9 +13,11 @@ import ScreenShell from '../../Components/UI/ScreenShell';
 import SectionHeader from '../../Components/UI/SectionHeader';
 
 const { colors, spacing, radius, shadow } = AppTheme;
+const getStationStatus = (station) => station?.verificationStatus || (station?.isVerified ? 'approved' : 'pending');
 
 const OperatorsScreen = () => {
   const { user } = useUser();
+  const { showAlert } = useThemedAlert();
   const [operators, setOperators] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -23,6 +27,9 @@ const OperatorsScreen = () => {
   const [password, setPassword] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [nicNumber, setNicNumber] = useState('');
+  const [hasRegisteredStation, setHasRegisteredStation] = useState(false);
+  const [hasApprovedStation, setHasApprovedStation] = useState(false);
+  const [isCheckingStationStatus, setIsCheckingStationStatus] = useState(true);
 
   const fetchOperators = useCallback(async () => {
     try {
@@ -30,12 +37,47 @@ const OperatorsScreen = () => {
       setOperators(response.data);
     } catch (error) {
       console.error('Error fetching operators:', error);
+      setOperators([]);
     }
   }, [user]);
 
-  useEffect(() => {
-    fetchOperators();
-  }, [fetchOperators]);
+  const hydrateScreen = useCallback(async () => {
+    setIsCheckingStationStatus(true);
+
+    try {
+      const response = await axios.get(buildApiUrl('/api/stations/getAllStaionsByUserId'), buildMobileRequestConfig(user));
+      const stationList = response.data || [];
+      const registered = Array.isArray(stationList) && stationList.length > 0;
+      const approved = Array.isArray(stationList) && stationList.some((station) => getStationStatus(station) === 'approved');
+      setHasRegisteredStation(registered);
+      setHasApprovedStation(approved);
+
+      if (!registered) {
+        setOperators([]);
+        return;
+      }
+
+      if (!approved) {
+        setOperators([]);
+        return;
+      }
+
+      await fetchOperators();
+    } catch (error) {
+      console.error('Error checking station status:', error);
+      setHasRegisteredStation(false);
+      setHasApprovedStation(false);
+      setOperators([]);
+    } finally {
+      setIsCheckingStationStatus(false);
+    }
+  }, [fetchOperators, user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      hydrateScreen();
+    }, [hydrateScreen]),
+  );
 
   const filteredOperators = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -47,8 +89,18 @@ const OperatorsScreen = () => {
   }, [operators, searchQuery]);
 
   const addOperator = async () => {
+    if (!hasRegisteredStation) {
+      showAlert('Station Required', 'Register a station before adding operators.');
+      return;
+    }
+
+    if (!hasApprovedStation) {
+      showAlert('Approval Pending', 'Wait for admin approval before adding operators.');
+      return;
+    }
+
     if (!name || !email || !password || !phoneNumber || !nicNumber) {
-      Alert.alert('Missing Fields', 'All operator fields are required.');
+      showAlert('Missing Fields', 'All operator fields are required.');
       return;
     }
 
@@ -71,10 +123,10 @@ const OperatorsScreen = () => {
       setPhoneNumber('');
       setNicNumber('');
       fetchOperators();
-      Alert.alert('Success', 'Operator added successfully. They must change this temporary password on first login.');
+      showAlert('Success', 'Operator added successfully. They must change this temporary password on first login.');
     } catch (error) {
       console.error('Error adding operator:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Could not add operator.');
+      showAlert('Error', error.response?.data?.message || 'Could not add operator.');
     }
   };
 
@@ -83,10 +135,10 @@ const OperatorsScreen = () => {
       await axios.delete(buildApiUrl(`/api/stations/deleteStationOperator/${operatorId}`), buildMobileRequestConfig(user));
       fetchOperators();
       setSelectedOperator(null);
-      Alert.alert('Success', 'Operator removed successfully.');
+      showAlert('Success', 'Operator removed successfully.');
     } catch (error) {
       console.error('Error removing operator:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Could not remove operator.');
+      showAlert('Error', error.response?.data?.message || 'Could not remove operator.');
     }
   };
 
@@ -98,26 +150,49 @@ const OperatorsScreen = () => {
       scroll={false}
       contentContainerStyle={styles.shellBody}
     >
-      <View style={styles.metricGrid}>
-        <MetricCard label="Operators" value={`${operators.length}`} style={styles.metricCard} />
-      </View>
-
-      <View style={styles.sectionBlock}>
-        <SectionHeader
-          badge="Records"
-          title="Operator accounts"
-          subtitle="Search by operator name."
-          trailing={<AppButton title="Add Operator" onPress={() => setIsModalVisible(true)} />}
-        />
-        <View style={styles.searchPanel}>
-          <AppInput placeholder="Search by name..." value={searchQuery} onChangeText={setSearchQuery} style={styles.searchInput} />
-        </View>
-      </View>
-
       <FlatList
+        style={styles.list}
         data={filteredOperators}
         keyExtractor={(item) => item._id}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <View style={styles.listHeader}>
+            <View style={styles.metricGrid}>
+              <MetricCard label="Operators" value={`${operators.length}`} tone="dark" style={styles.metricCard} />
+            </View>
+
+            <View style={styles.sectionBlock}>
+              <SectionHeader
+                badge="Records"
+                title="Operator accounts"
+                subtitle="Search by operator name."
+                trailing={
+                  <AppButton
+                    title="Add Operator"
+                    onPress={() => setIsModalVisible(true)}
+                    disabled={!hasApprovedStation || isCheckingStationStatus}
+                  />
+                }
+              />
+              <View style={styles.searchPanel}>
+                <AppInput placeholder="Search by name..." value={searchQuery} onChangeText={setSearchQuery} style={styles.searchInput} />
+              </View>
+              {!isCheckingStationStatus && !hasRegisteredStation ? (
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyTitle}>Station required</Text>
+                  <Text style={styles.emptyText}>Register a station first to create operator accounts.</Text>
+                </View>
+              ) : !isCheckingStationStatus && !hasApprovedStation ? (
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyTitle}>Approval pending</Text>
+                  <Text style={styles.emptyText}>Admin approval is required before operator accounts can be created.</Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+        }
         renderItem={({ item }) => (
           <Pressable onPress={() => setSelectedOperator(item)} style={styles.listCard}>
             <Text style={styles.cardTitle}>{item.name}</Text>
@@ -128,8 +203,16 @@ const OperatorsScreen = () => {
         )}
         ListEmptyComponent={
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>No operators found</Text>
-            <Text style={styles.emptyText}>Create an operator to populate this list.</Text>
+            <Text style={styles.emptyTitle}>
+              {hasRegisteredStation ? (hasApprovedStation ? 'No operators found' : 'Approval pending') : 'No station registered'}
+            </Text>
+            <Text style={styles.emptyText}>
+              {hasRegisteredStation
+                ? hasApprovedStation
+                  ? 'Create an operator to populate this list.'
+                  : 'Wait for admin approval, then create your first operator account.'
+                : 'Register a station first, then create your first operator account.'}
+            </Text>
           </View>
         }
       />
@@ -146,7 +229,7 @@ const OperatorsScreen = () => {
               <AppInput placeholder="NIC Number" value={nicNumber} onChangeText={setNicNumber} autoCapitalize="characters" />
             </View>
             <View style={styles.buttonStack}>
-              <AppButton title="Add Operator" onPress={addOperator} />
+              <AppButton title="Add Operator" onPress={addOperator} disabled={!hasApprovedStation} />
               <AppButton title="Cancel" onPress={() => setIsModalVisible(false)} variant="secondary" />
             </View>
           </View>
@@ -179,6 +262,12 @@ const styles = StyleSheet.create({
   shellBody: {
     flex: 1,
   },
+  list: {
+    flex: 1,
+  },
+  listHeader: {
+    gap: spacing.lg,
+  },
   metricGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -194,12 +283,11 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   searchPanel: {
-    padding: spacing.lg,
+    padding: spacing.sm,
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceStrong,
+    backgroundColor: colors.surfaceMuted,
     borderWidth: 1,
     borderColor: colors.border,
-    ...shadow.sm,
   },
   listContent: {
     gap: spacing.md,

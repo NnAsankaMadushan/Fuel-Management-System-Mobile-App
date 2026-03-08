@@ -81,7 +81,7 @@ const ChangePasswordScreen = ({ isMandatory = false }) => {
         <AppButton title="Update Password" onPress={handleUpdatePassword} loading={isSubmitting} />
       </View>
 
-      <AppButton title="Logout" onPress={logoutUser} variant="danger" />
+      <AppButton title="Logout" onPress={logoutUser} variant="logout" />
     </ScreenShell>
   );
 };

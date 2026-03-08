@@ -77,6 +77,7 @@ const StationFuelSummaryScreen = () => {
 
   return (
     <ScreenShell
+      showUserIdentity
       badge={isOperator ? 'Operator Fuel' : 'Station Fuel'}
       title="Fuel summary"
       subtitle={
@@ -86,10 +87,10 @@ const StationFuelSummaryScreen = () => {
       }
     >
       <View style={styles.metricGrid}>
-        <MetricCard label="Transactions" value={`${summary.totalTransactions}`} style={styles.metricCard} />
-        <MetricCard label="Dispensed" value={`${summary.totalLitresDispensed}L`} style={styles.metricCard} />
-        {!isOperator ? <MetricCard label="Stations" value={`${summary.totalStations}`} style={styles.metricCard} /> : null}
-        {!isOperator ? <MetricCard label="Vehicles" value={`${summary.totalRegisteredVehicles}`} style={styles.metricCard} /> : null}
+        <MetricCard label="Transactions" value={`${summary.totalTransactions}`} tone="dark" style={styles.metricCard} />
+        <MetricCard label="Dispensed" value={`${summary.totalLitresDispensed}L`} tone="accent" style={styles.metricCard} />
+        {!isOperator ? <MetricCard label="Stations" value={`${summary.totalStations}`} tone="surface" style={styles.metricCard} /> : null}
+        {!isOperator ? <MetricCard label="Vehicles" value={`${summary.totalRegisteredVehicles}`} tone="amber" style={styles.metricCard} /> : null}
       </View>
 
       {error ? (

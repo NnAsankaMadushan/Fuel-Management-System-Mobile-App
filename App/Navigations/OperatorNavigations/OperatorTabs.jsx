@@ -1,62 +1,17 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { AppTheme } from '../../../constants/Colors';
 
 import HomeScreen from '../../Screens/OperatorScreens/HomeScreen';
 import ProfileScreen from '../../Screens/OperatorScreens/ProfileScreen';
 import StationFuelSummaryScreen from '../../Screens/SharedScreens/StationFuelSummaryScreen';
-import StationLogsScreen from '../../Screens/SharedScreens/StationLogsScreen';
-import VehicleRegisterScreen from '../../Screens/VehicleOwnerScreens/VehicleRegisterScreen';
 import NotificationCenterScreen from '../../Screens/SharedScreens/NotificationCenterScreen';
+import { tabScreenOptions } from '../sharedTabScreenOptions';
 
 const Tab = createBottomTabNavigator();
 
-const screenOptions = {
-  headerShown: false,
-  tabBarActiveTintColor: AppTheme.tabBar.activeTintColor,
-  tabBarInactiveTintColor: AppTheme.tabBar.inactiveTintColor,
-  tabBarStyle: {
-    backgroundColor: AppTheme.tabBar.backgroundColor,
-    borderTopColor: AppTheme.tabBar.borderTopColor,
-    height: 72,
-    paddingTop: 8,
-    paddingBottom: 10,
-  },
-  tabBarLabelStyle: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-};
-
 const OperatorTabs = () => (
-  <Tab.Navigator screenOptions={screenOptions}>
-    <Tab.Screen
-      name="operatorFuelSummary"
-      component={StationFuelSummaryScreen}
-      options={{
-        tabBarLabel: 'Fuel',
-        tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="gas-station-outline" size={size} color={color} />,
-      }}
-    />
-    <Tab.Screen
-      name="operatorLogs"
-      component={StationLogsScreen}
-      options={{
-        tabBarLabel: 'Logs',
-        tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="history" size={size} color={color} />,
-      }}
-    />
-    <Tab.Screen
-      name="operatorVehicleRegister"
-      component={VehicleRegisterScreen}
-      options={{
-        tabBarLabel: 'Register',
-        tabBarIcon: ({ color, size }) => (
-          <MaterialCommunityIcons name="car-2-plus" size={size} color={color} />
-        ),
-      }}
-    />
+  <Tab.Navigator screenOptions={tabScreenOptions}>
     <Tab.Screen
       name="operatorScanner"
       component={HomeScreen}
@@ -66,11 +21,11 @@ const OperatorTabs = () => (
       }}
     />
     <Tab.Screen
-      name="operatorProfile"
-      component={ProfileScreen}
+      name="operatorFuelSummary"
+      component={StationFuelSummaryScreen}
       options={{
-        tabBarLabel: 'Profile',
-        tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="account-circle-outline" size={size} color={color} />,
+        tabBarLabel: 'Fuel',
+        tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="gas-station-outline" size={size} color={color} />,
       }}
     />
     <Tab.Screen
@@ -79,6 +34,14 @@ const OperatorTabs = () => (
       options={{
         tabBarLabel: 'Alerts',
         tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="bell-badge-outline" size={size} color={color} />,
+      }}
+    />
+    <Tab.Screen
+      name="operatorProfile"
+      component={ProfileScreen}
+      options={{
+        tabBarLabel: 'Profile',
+        tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="account-circle-outline" size={size} color={color} />,
       }}
     />
   </Tab.Navigator>

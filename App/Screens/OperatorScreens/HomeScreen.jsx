@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Modal, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, StyleSheet, Text, View } from 'react-native';
 import axios from 'axios';
-import { BarCodeScanner } from 'expo-barcode-scanner';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFocusEffect } from '@react-navigation/native';
 import { AppTheme } from '../../../constants/Colors';
 import { useUser } from '../../../context/UserContext';
-import { useAppToast } from '../../../context/ToastContext';
 import { buildApiUrl, buildMobileRequestConfig } from '../../../utils/apiConfig';
 import { addLocalNotification } from '../../../utils/localNotifications';
 import { showUnreadNotificationPopup } from '../../../utils/notificationPopup';
@@ -51,10 +50,9 @@ const extractVehicleNumber = (value) => {
   return rawValue;
 };
 
-const HomeScreen = () => {
+const HomeScreen = ({ navigation }) => {
   const { user } = useUser();
-  const { showToast } = useAppToast();
-  const [hasPermission, setHasPermission] = useState(null);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [isScannerVisible, setIsScannerVisible] = useState(false);
   const [qrPayload, setQrPayload] = useState('');
@@ -63,7 +61,14 @@ const HomeScreen = () => {
   const [summary, setSummary] = useState(initialSummary);
   const [isSummaryLoading, setIsSummaryLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState(null);
+
+  const showStatusToast = useCallback((message, type = 'success') => {
+    if (!message) {
+      return;
+    }
+
+    Alert.alert(type === 'error' ? 'Failed' : 'Success', message);
+  }, []);
 
   const loadSummary = useCallback(async () => {
     try {
@@ -77,14 +82,11 @@ const HomeScreen = () => {
       });
     } catch (error) {
       console.error('Error fetching station fuel summary:', error);
-      setFeedback({
-        type: 'error',
-        message: error.response?.data?.message || 'Failed to load station fuel summary.',
-      });
+      showStatusToast(error.response?.data?.message || 'Failed to load station fuel summary.', 'error');
     } finally {
       setIsSummaryLoading(false);
     }
-  }, [user]);
+  }, [showStatusToast, user]);
 
   useEffect(() => {
     const initialize = async () => {
@@ -104,7 +106,7 @@ const HomeScreen = () => {
             return;
           }
 
-          await showUnreadNotificationPopup(user, showToast);
+          await showUnreadNotificationPopup(user);
         } catch (notificationError) {
           console.error('Error showing notifications:', notificationError);
         }
@@ -115,7 +117,7 @@ const HomeScreen = () => {
       return () => {
         isActive = false;
       };
-    }, [showToast, user]),
+    }, [user]),
   );
 
   const handleBarCodeScanned = ({ data }) => {
@@ -127,24 +129,18 @@ const HomeScreen = () => {
     setIsScannerVisible(false);
     setQrPayload(data);
     setVehicleNumber(extractVehicleNumber(data));
-    setFeedback(null);
   };
 
-  const handleReset = ({ keepFeedback = false } = {}) => {
+  const handleReset = () => {
     setScanned(false);
     setQrPayload('');
     setVehicleNumber('');
     setLitresPumped('');
-
-    if (!keepFeedback) {
-      setFeedback(null);
-    }
   };
 
   const handleQrPayloadChange = (value) => {
     setQrPayload(value);
     setVehicleNumber(extractVehicleNumber(value));
-    setFeedback(null);
 
     if (!value.trim()) {
       setScanned(false);
@@ -159,20 +155,13 @@ const HomeScreen = () => {
     }
 
     setLitresPumped(value);
-    setFeedback(null);
   };
 
   const openScanner = async () => {
-    if (hasPermission !== true) {
-      const { status } = await BarCodeScanner.requestPermissionsAsync();
-      const granted = status === 'granted';
-      setHasPermission(granted);
-
-      if (!granted) {
-        setFeedback({
-          type: 'error',
-          message: 'Camera permission is required to scan QR codes.',
-        });
+    if (!cameraPermission?.granted) {
+      const permissionResult = await requestCameraPermission();
+      if (!permissionResult?.granted) {
+        showStatusToast('Camera permission is required to scan QR codes.', 'error');
         return;
       }
     }
@@ -183,17 +172,16 @@ const HomeScreen = () => {
 
   const handleSubmit = async () => {
     if (!vehicleNumber.trim()) {
-      setFeedback({ type: 'error', message: 'Scan the QR code or enter the vehicle number first.' });
+      showStatusToast('Scan the QR code or enter the vehicle number first.', 'error');
       return;
     }
 
     if (!litresPumped) {
-      setFeedback({ type: 'error', message: 'Enter the litres pumped before recording the transaction.' });
+      showStatusToast('Enter the litres pumped before recording the transaction.', 'error');
       return;
     }
 
     setIsSubmitting(true);
-    setFeedback(null);
 
     try {
       const response = await axios.post(
@@ -208,12 +196,7 @@ const HomeScreen = () => {
 
       await loadSummary();
 
-      const successMessage = `${response.data?.litresPumped}L of ${response.data?.fuelType} recorded for ${response.data?.vehicleNumber}. Available ${response.data?.fuelType} stock was reduced automatically.`;
-
-      setFeedback({
-        type: 'success',
-        message: successMessage,
-      });
+      showStatusToast('Fuel transaction recorded successfully.', 'success');
 
       await addLocalNotification(user?._id, {
         type: 'fuel_transaction',
@@ -228,19 +211,10 @@ const HomeScreen = () => {
           : null,
       });
 
-      showToast({
-        title: 'Transaction saved',
-        message: successMessage,
-        type: 'success',
-      });
-
-      handleReset({ keepFeedback: true });
+      handleReset();
     } catch (error) {
       console.error('Error registering fuel transaction:', error);
-      setFeedback({
-        type: 'error',
-        message: error.response?.data?.message || 'Failed to register the fuel transaction.',
-      });
+      showStatusToast(error.response?.data?.message || 'Failed to register the fuel transaction.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -256,11 +230,13 @@ const HomeScreen = () => {
         <MetricCard
           label="Petrol Available"
           value={isSummaryLoading ? '...' : `${summary.totalAvailablePetrol}L`}
+          tone="accent"
           style={styles.metricCard}
         />
         <MetricCard
           label="Diesel Available"
           value={isSummaryLoading ? '...' : `${summary.totalAvailableDiesel}L`}
+          tone="amber"
           style={styles.metricCard}
         />
       </View>
@@ -285,10 +261,7 @@ const HomeScreen = () => {
         <AppInput
           label="Vehicle number"
           value={vehicleNumber}
-          onChangeText={(value) => {
-            setVehicleNumber(value);
-            setFeedback(null);
-          }}
+          onChangeText={setVehicleNumber}
           placeholder="Vehicle number"
           autoCapitalize="characters"
         />
@@ -302,14 +275,6 @@ const HomeScreen = () => {
         />
 
         <AppButton title="Scan QR" onPress={openScanner} variant="secondary" />
-
-        {feedback ? (
-          <View style={[styles.feedbackCard, feedback.type === 'error' ? styles.errorCard : styles.successCard]}>
-            <Text style={[styles.feedbackText, feedback.type === 'error' ? styles.errorText : styles.successText]}>
-              {feedback.message}
-            </Text>
-          </View>
-        ) : null}
 
         <View style={styles.actionRow}>
           <AppButton
@@ -328,7 +293,11 @@ const HomeScreen = () => {
         onRequestClose={() => setIsScannerVisible(false)}
       >
         <View style={styles.scannerFullScreen}>
-          <BarCodeScanner onBarCodeScanned={scanned ? undefined : handleBarCodeScanned} style={styles.scannerFullPreview} />
+          <CameraView
+            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+            barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+            style={styles.scannerFullPreview}
+          />
           <View style={styles.scannerOverlay}>
             <View style={styles.scannerHeaderCard}>
               <Text style={styles.scannerBadge}>QR Scan</Text>
@@ -419,30 +388,6 @@ const styles = StyleSheet.create({
     color: 'rgba(248, 250, 252, 0.88)',
     fontSize: 14,
     lineHeight: 21,
-  },
-  feedbackCard: {
-    padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-  },
-  successCard: {
-    backgroundColor: colors.successSoft,
-    borderColor: 'rgba(29, 139, 95, 0.16)',
-  },
-  errorCard: {
-    backgroundColor: colors.dangerSoft,
-    borderColor: 'rgba(220, 76, 63, 0.16)',
-  },
-  feedbackText: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '700',
-  },
-  successText: {
-    color: colors.success,
-  },
-  errorText: {
-    color: colors.danger,
   },
 });
 

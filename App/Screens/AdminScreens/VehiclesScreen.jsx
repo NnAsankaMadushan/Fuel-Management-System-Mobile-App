@@ -100,28 +100,40 @@ const VehiclesScreen = () => {
 
   return (
     <ScreenShell
+      showUserIdentity
       badge="Admin"
       title="Vehicles"
       subtitle="Review, approve, or remove vehicle records."
       scroll={false}
       contentContainerStyle={styles.shellBody}
     >
-      <View style={styles.metricGrid}>
-        <MetricCard label="Vehicles" value={`${vehicles.length}`} style={styles.metricCard} />
-        <MetricCard label="Pending" value={`${pendingCount}`} style={styles.metricCard} />
-      </View>
-
-      <View style={styles.sectionBlock}>
-        <SectionHeader badge="Records" title="Vehicle records" subtitle="Search by number, type, owner, or status." />
-        <View style={styles.searchPanel}>
-          <AppInput placeholder="Search vehicle, owner, status..." value={searchTerm} onChangeText={setSearchTerm} />
-        </View>
-      </View>
-
       <FlatList
+        style={styles.list}
         data={filteredVehicles}
         keyExtractor={(item) => item._id.toString()}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <View style={styles.listHeader}>
+            <View style={styles.metricGrid}>
+              <MetricCard label="Vehicles" value={`${vehicles.length}`} style={styles.metricCard} />
+              <MetricCard label="Pending" value={`${pendingCount}`} style={styles.metricCard} />
+            </View>
+
+            <View style={styles.sectionBlock}>
+              <SectionHeader badge="Records" title="Vehicle records" subtitle="Search by number, type, owner, or status." />
+              <View style={styles.searchPanel}>
+                <AppInput
+                  placeholder="Search vehicle, owner, status..."
+                  value={searchTerm}
+                  onChangeText={setSearchTerm}
+                  style={styles.searchInput}
+                />
+              </View>
+            </View>
+          </View>
+        }
         renderItem={({ item }) => (
           <Pressable onPress={() => setSelectedVehicle(item)} style={styles.listCard}>
             <View style={styles.cardTop}>
@@ -180,6 +192,12 @@ const styles = StyleSheet.create({
   shellBody: {
     flex: 1,
   },
+  list: {
+    flex: 1,
+  },
+  listHeader: {
+    gap: spacing.lg,
+  },
   metricGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -191,13 +209,15 @@ const styles = StyleSheet.create({
   sectionBlock: {
     gap: spacing.md,
   },
+  searchInput: {
+    width: '100%',
+  },
   searchPanel: {
-    padding: spacing.lg,
+    padding: spacing.sm,
     borderRadius: radius.lg,
-    backgroundColor: colors.surfaceStrong,
+    backgroundColor: colors.surfaceMuted,
     borderWidth: 1,
     borderColor: colors.border,
-    ...shadow.sm,
   },
   listContent: {
     gap: spacing.md,

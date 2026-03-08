@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "289973062833",
+    "project_id": "fuelmanagement-6d0b2",
+    "storage_bucket": "fuelmanagement-6d0b2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:289973062833:android:7abe48dc213f8c414b6690",
+        "android_client_info": {
+          "package_name": "com.nnamadushan.fuelmanagement"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxLj3mUAdMsx93cupmURzSs1RfBYQsvj4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

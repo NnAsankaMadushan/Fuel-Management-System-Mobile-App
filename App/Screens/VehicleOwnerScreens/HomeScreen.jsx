@@ -3,7 +3,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import { useUser } from '../../../context/UserContext';
-import { useAppToast } from '../../../context/ToastContext';
 import { AppTheme } from '../../../constants/Colors';
 import { buildApiUrl, buildMobileRequestConfig } from '../../../utils/apiConfig';
 import { showUnreadNotificationPopup } from '../../../utils/notificationPopup';
@@ -16,7 +15,6 @@ const { colors, spacing, radius, shadow } = AppTheme;
 
 const VehicleHomeScreen = ({ navigation }) => {
   const { user } = useUser();
-  const { showToast } = useAppToast();
   const [vehicles, setVehicles] = useState(() => user?.vehicles || []);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -60,7 +58,7 @@ const VehicleHomeScreen = ({ navigation }) => {
         }
 
         try {
-          await showUnreadNotificationPopup(user, showToast);
+          await showUnreadNotificationPopup(user);
         } catch (notificationError) {
           console.error('Error showing notifications:', notificationError);
         }
@@ -71,7 +69,7 @@ const VehicleHomeScreen = ({ navigation }) => {
       return () => {
         isActive = false;
       };
-    }, [loadDashboard, showToast, user]),
+    }, [loadDashboard, user]),
   );
 
   const totalRemainingQuota = useMemo(
@@ -85,13 +83,14 @@ const VehicleHomeScreen = ({ navigation }) => {
 
   return (
     <ScreenShell
+      showUserIdentity
       badge="Vehicle"
       title="My vehicles"
-      subtitle="Quick access to register vehicles, check quota, and open fuel QR."
+      subtitle="Quick access to register vehicles, open details, and scan fuel QR."
     >
       <View style={styles.metricGrid}>
-        <MetricCard label="Vehicles" value={`${vehicles.length}`} style={styles.metricCard} />
-        <MetricCard label="Remaining quota" value={`${totalRemainingQuota}L`} style={styles.metricCard} />
+        <MetricCard label="Vehicles" value={`${vehicles.length}`} tone="dark" style={styles.metricCard} />
+        <MetricCard label="Remaining quota" value={`${totalRemainingQuota}L`} tone="accent" style={styles.metricCard} />
       </View>
 
       <View style={styles.sectionBlock}>
@@ -114,14 +113,6 @@ const VehicleHomeScreen = ({ navigation }) => {
             description="Open vehicle details and QR code."
             tone="teal"
             onPress={() => navigation.navigate('vehicleQr')}
-            style={styles.actionCard}
-          />
-          <ActionCard
-            mark="QT"
-            title="Check quota"
-            description="View available quota by vehicle."
-            tone="dark"
-            onPress={() => navigation.navigate('vehicleQuota')}
             style={styles.actionCard}
           />
           <ActionCard

@@ -3,6 +3,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { buildApiUrl, buildMobileRequestConfig } from '../utils/apiConfig';
 import { normalizeUserPayload } from '../utils/userRole';
+import { getExpoPushToken } from '../utils/deviceNotifications';
 
 // import AdminTabs from '../App/Navigations/AdminNavigations/AdminTabs';
 // import VehicleOwnerTabs from '../App/Navigations/VehicleOwnerNavigations/VehicleOwnerTabs';
@@ -10,9 +11,53 @@ import { normalizeUserPayload } from '../utils/userRole';
 
 const UserContext = createContext();
 
+const shouldLogContextError = (error, { logClientErrors = false } = {}) => {
+  const status = Number(error?.response?.status);
+
+  if (
+    Number.isFinite(status) &&
+    status >= 400 &&
+    status < 500 &&
+    !logClientErrors
+  ) {
+    return false;
+  }
+
+  return true;
+};
+
+const logContextError = (label, error, options = {}) => {
+  if (shouldLogContextError(error, options)) {
+    console.error(`${label}:`, error);
+  }
+};
+
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [, setLoading] = useState(true);
+
+  const syncPushToken = async (sessionUser) => {
+    if (!sessionUser?.token) {
+      return;
+    }
+
+    try {
+      const tokenResult = await getExpoPushToken();
+      const pushToken = String(tokenResult?.token || '').trim();
+
+      if (!pushToken) {
+        return;
+      }
+
+      await axios.post(
+        buildApiUrl('/api/users/push-token'),
+        { token: pushToken },
+        buildMobileRequestConfig(sessionUser),
+      );
+    } catch (error) {
+      logContextError('Register push token error', error, { logClientErrors: false });
+    }
+  };
 
   useEffect(() => {
     // Check if the user is already logged in
@@ -22,6 +67,7 @@ export const UserProvider = ({ children }) => {
         const normalizedUser = normalizeUserPayload(JSON.parse(userData));
         setUser(normalizedUser);
         await AsyncStorage.setItem('user', JSON.stringify(normalizedUser));
+        syncPushToken(normalizedUser);
         // navigateToRoleBasedScreen(JSON.parse(userData).role);
       }
       setLoading(false);
@@ -40,9 +86,10 @@ export const UserProvider = ({ children }) => {
 
       await AsyncStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
+      syncPushToken(userData);
       return userData;
     } catch (error) {
-      console.error('Login error:', error);
+      logContextError('Login error', error);
       throw error;
     }
   };
@@ -56,7 +103,7 @@ export const UserProvider = ({ children }) => {
       );
       return response.data;
     } catch (error) {
-      console.error('Signup error:', error);
+      logContextError('Signup error', error);
       throw error;
     }
   };
@@ -70,7 +117,7 @@ export const UserProvider = ({ children }) => {
       );
       return response.data;
     } catch (error) {
-      console.error('Resend signup OTP error:', error);
+      logContextError('Resend signup OTP error', error);
       throw error;
     }
   };
@@ -84,7 +131,7 @@ export const UserProvider = ({ children }) => {
       );
       return response.data;
     } catch (error) {
-      console.error('Confirm signup OTP error:', error);
+      logContextError('Confirm signup OTP error', error);
       throw error;
     }
   };
@@ -98,7 +145,7 @@ export const UserProvider = ({ children }) => {
       );
       return response.data;
     } catch (error) {
-      console.error('Request email OTP error:', error);
+      logContextError('Request email OTP error', error);
       throw error;
     }
   };
@@ -112,7 +159,7 @@ export const UserProvider = ({ children }) => {
       );
       return response.data;
     } catch (error) {
-      console.error('Verify email OTP error:', error);
+      logContextError('Verify email OTP error', error);
       throw error;
     }
   };
@@ -141,6 +188,7 @@ export const UserProvider = ({ children }) => {
 
     await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
     setUser(updatedUser);
+    syncPushToken(updatedUser);
 
     return response.data;
   };

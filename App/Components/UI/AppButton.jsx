@@ -7,23 +7,33 @@ const { colors, spacing, radius, shadow } = AppTheme;
 const variants = {
   primary: {
     backgroundColor: colors.accent,
-    borderColor: 'transparent',
+    borderColor: 'rgba(194, 65, 12, 0.18)',
     textColor: colors.white,
+    shadowColor: colors.accentStrong,
   },
   secondary: {
     backgroundColor: colors.surfaceStrong,
     borderColor: colors.border,
     textColor: colors.text,
+    shadowColor: shadow.sm.shadowColor,
   },
   ghost: {
-    backgroundColor: 'transparent',
-    borderColor: colors.borderStrong,
-    textColor: colors.text,
+    backgroundColor: colors.accentSoft,
+    borderColor: 'rgba(249, 115, 22, 0.16)',
+    textColor: colors.accentStrong,
+    shadowColor: shadow.sm.shadowColor,
+  },
+  logout: {
+    backgroundColor: colors.surfaceDark,
+    borderColor: 'rgba(255, 239, 229, 0.12)',
+    textColor: colors.white,
+    shadowColor: colors.surfaceDark,
   },
   danger: {
     backgroundColor: colors.dangerSoft,
-    borderColor: 'rgba(220, 76, 63, 0.16)',
+    borderColor: 'rgba(209, 74, 49, 0.18)',
     textColor: colors.danger,
+    shadowColor: shadow.sm.shadowColor,
   },
 };
 
@@ -40,7 +50,8 @@ const AppButton = ({ title, onPress, variant = 'primary', disabled = false, load
           backgroundColor: current.backgroundColor,
           borderColor: current.borderColor,
           opacity: disabled || loading ? 0.7 : 1,
-          transform: [{ translateY: pressed ? -1 : 0 }],
+          shadowColor: current.shadowColor,
+          transform: [{ translateY: pressed ? 1 : 0 }],
         },
         style,
       ]}
@@ -56,7 +67,7 @@ const AppButton = ({ title, onPress, variant = 'primary', disabled = false, load
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 54,
+    minHeight: 52,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.pill,
     borderWidth: 1,
@@ -67,6 +78,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: '800',
+    letterSpacing: 0.25,
   },
 });
 

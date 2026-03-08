@@ -1,20 +1,21 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import { AppTheme } from '../../../constants/Colors';
+import { useThemedAlert } from '../../../context/ThemedAlertContext';
 import { useUser } from '../../../context/UserContext';
-import { useAppToast } from '../../../context/ToastContext';
 import { buildApiUrl, buildMobileRequestConfig } from '../../../utils/apiConfig';
 import { showUnreadNotificationPopup } from '../../../utils/notificationPopup';
-import ActionCard from '../../Components/UI/ActionCard';
 import AppButton from '../../Components/UI/AppButton';
 import AppInput from '../../Components/UI/AppInput';
 import MetricCard from '../../Components/UI/MetricCard';
 import ScreenShell from '../../Components/UI/ScreenShell';
 import SectionHeader from '../../Components/UI/SectionHeader';
+import StatusChip from '../../Components/UI/StatusChip';
 
 const { colors, spacing, radius, shadow } = AppTheme;
+const getStationStatus = (station) => station?.verificationStatus || (station?.isVerified ? 'approved' : 'pending');
 
 const buildStockDrafts = (stationList) =>
   Object.fromEntries(
@@ -29,7 +30,7 @@ const buildStockDrafts = (stationList) =>
 
 const HomeScreen = ({ navigation }) => {
   const { user } = useUser();
-  const { showToast } = useAppToast();
+  const { showAlert } = useThemedAlert();
   const [stations, setStations] = useState([]);
   const [stockDrafts, setStockDrafts] = useState({});
   const [stationName, setStationName] = useState('');
@@ -50,11 +51,11 @@ const HomeScreen = ({ navigation }) => {
       setStockDrafts(buildStockDrafts(stationList));
     } catch (error) {
       console.error('Error fetching stations:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Failed to fetch stations.');
+      showAlert('Error', error.response?.data?.message || 'Failed to fetch stations.');
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [showAlert, user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -69,7 +70,7 @@ const HomeScreen = ({ navigation }) => {
         }
 
         try {
-          await showUnreadNotificationPopup(user, showToast);
+          await showUnreadNotificationPopup(user);
         } catch (notificationError) {
           console.error('Error showing notifications:', notificationError);
         }
@@ -80,12 +81,12 @@ const HomeScreen = ({ navigation }) => {
       return () => {
         isActive = false;
       };
-    }, [loadStations, showToast, user]),
+    }, [loadStations, user]),
   );
 
   const handleRegister = async () => {
     if (!stationName || !location || !stationRegNumber) {
-      Alert.alert('Missing Fields', 'Please fill out all station details.');
+      showAlert('Missing Fields', 'Please fill out all station details.');
       return;
     }
 
@@ -102,17 +103,17 @@ const HomeScreen = ({ navigation }) => {
       );
 
       if (response.status === 201) {
-        Alert.alert('Success', 'Station registered successfully.');
+        showAlert('Success', response.data?.message || 'Station registered successfully and is pending admin approval.');
         setStationName('');
         setLocation('');
         setStationRegNumber('');
         await loadStations();
       } else {
-        Alert.alert('Error', response.data.message || 'Registration failed.');
+        showAlert('Error', response.data.message || 'Registration failed.');
       }
     } catch (error) {
       console.error('Error registering station:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Failed to register station.');
+      showAlert('Error', error.response?.data?.message || 'Failed to register station.');
     } finally {
       setIsSubmitting(false);
     }
@@ -136,8 +137,13 @@ const HomeScreen = ({ navigation }) => {
     const stationId = station._id || station.station_regNumber;
     const draft = stockDrafts[stationId] || {};
 
+    if (getStationStatus(station) !== 'approved') {
+      showAlert('Approval Required', station.approvalNote || 'Wait for admin approval before updating station fuel stock.');
+      return;
+    }
+
     if (!draft.availablePetrol && !draft.availableDiesel) {
-      Alert.alert('Missing Values', 'Enter petrol or diesel amount before updating fuel stock.');
+      showAlert('Missing Values', 'Enter petrol or diesel amount before updating fuel stock.');
       return;
     }
 
@@ -159,11 +165,11 @@ const HomeScreen = ({ navigation }) => {
         buildMobileRequestConfig(user),
       );
 
-      Alert.alert('Success', 'Fuel stock updated successfully.');
+      showAlert('Success', 'Fuel stock updated successfully.');
       await loadStations();
     } catch (error) {
       console.error('Error updating station fuel stock:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Failed to update fuel stock.');
+      showAlert('Error', error.response?.data?.message || 'Failed to update fuel stock.');
     } finally {
       setSavingStationId('');
     }
@@ -171,48 +177,15 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <ScreenShell
+      showUserIdentity
       badge="Station"
       title="Station dashboard"
       subtitle="Manage stations, operators, fuel stock, and station activity."
     >
       <View style={styles.metricGrid}>
-        <MetricCard label="Stations" value={`${stations.length}`} style={styles.metricCard} />
-        <MetricCard label="Operators" value={`${totalOperators}`} style={styles.metricCard} />
-        <MetricCard label="Vehicles" value={`${totalVehicles}`} style={styles.metricCard} />
-      </View>
-
-      <View style={styles.sectionBlock}>
-        <SectionHeader badge="Quick Actions" title="Common tasks" />
-        <View style={styles.actionGrid}>
-          <ActionCard
-            mark="OP"
-            title="Manage operators"
-            description="Create and review operator accounts."
-            tone="teal"
-            onPress={() => navigation.navigate('stationOperators')}
-          />
-          <ActionCard
-            mark="FS"
-            title="Fuel summary"
-            description="View station fuel stock and activity."
-            tone="orange"
-            onPress={() => navigation.navigate('stationFuelSummary')}
-          />
-          <ActionCard
-            mark="LG"
-            title="View logs"
-            description="Review recent station dispensing records."
-            tone="dark"
-            onPress={() => navigation.navigate('stationLogs')}
-          />
-          <ActionCard
-            mark="PR"
-            title="Profile"
-            description="Update your account details."
-            tone="dark"
-            onPress={() => navigation.navigate('stationProfile')}
-          />
-        </View>
+        <MetricCard label="Stations" value={`${stations.length}`} tone="dark" style={styles.metricCard} />
+        <MetricCard label="Operators" value={`${totalOperators}`} tone="accent" style={styles.metricCard} />
+        <MetricCard label="Vehicles" value={`${totalVehicles}`} tone="amber" style={styles.metricCard} />
       </View>
 
       <View style={styles.sectionBlock}>
@@ -231,8 +204,20 @@ const HomeScreen = ({ navigation }) => {
 
             return (
               <View key={stationId} style={styles.stationCard}>
-                <Text style={styles.stationTitle}>{station.stationName}</Text>
+                <View style={styles.stationHeader}>
+                  <Text style={styles.stationTitle}>{station.stationName}</Text>
+                  <StatusChip label={getStationStatus(station)} tone={getStationStatus(station)} />
+                </View>
                 <Text style={styles.stationMeta}>{station.location}</Text>
+                <Text style={styles.stationMeta}>{station.station_regNumber}</Text>
+
+                {getStationStatus(station) !== 'approved' ? (
+                  <View style={styles.approvalNoteCard}>
+                    <Text style={styles.approvalNoteText}>
+                      {station.approvalNote || 'Waiting for admin approval before this station can be used.'}
+                    </Text>
+                  </View>
+                ) : null}
 
                 <View style={styles.stationStats}>
                   <View style={styles.statCard}>
@@ -280,6 +265,7 @@ const HomeScreen = ({ navigation }) => {
                     title={savingStationId === stationId ? 'Updating...' : 'Update fuel stock'}
                     onPress={() => handleStockUpdate(station)}
                     loading={savingStationId === stationId}
+                    disabled={getStationStatus(station) !== 'approved'}
                   />
                 </View>
               </View>
@@ -322,9 +308,6 @@ const styles = StyleSheet.create({
   sectionBlock: {
     gap: spacing.md,
   },
-  actionGrid: {
-    gap: spacing.md,
-  },
   inlineFieldGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -359,6 +342,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     ...shadow.sm,
   },
+  stationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   stationTitle: {
     color: colors.text,
     fontSize: 18,
@@ -367,6 +356,19 @@ const styles = StyleSheet.create({
   stationMeta: {
     color: colors.textMuted,
     fontSize: 14,
+  },
+  approvalNoteCard: {
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.accentSoft,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  approvalNoteText: {
+    color: colors.accentStrong,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '700',
   },
   stationStats: {
     flexDirection: 'row',

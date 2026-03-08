@@ -191,7 +191,7 @@ const ProfileScreenBase = ({ roleLabel }) => {
         </>
       )}
 
-      <AppButton title="Logout" onPress={logoutUser} variant="danger" />
+      <AppButton title="Logout" onPress={logoutUser} variant="logout" />
     </ScreenShell>
   );
 };

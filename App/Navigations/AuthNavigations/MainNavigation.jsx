@@ -3,8 +3,8 @@ import React from 'react';
 // import { NavigationContainer } from '@react-navigation/native';
 import AuthNavigation from './AuthNavigation';
 import VehicleOwnerStack from '../VehicleOwnerNavigations/VehicleOwnerStack';
-import StationOwnerTabs from '../StationOwnerNavigations/StationOwnerTabs';
-import OperatorTabs from '../OperatorNavigations/OperatorTabs';
+import StationOwnerStack from '../StationOwnerNavigations/StationOwnerStack';
+import OperatorStack from '../OperatorNavigations/OperatorStack';
 import AdminTabs from '../AdminNavigations/AdminTabs';
 import ChangePasswordScreen from '../../Screens/SharedScreens/ChangePasswordScreen';
 import { useUser } from '../../../context/UserContext';
@@ -25,11 +25,11 @@ const MainNavigation = () => {
   }
 
   if (user.role === 'station_owner') {
-    return <StationOwnerTabs />;
+    return <StationOwnerStack />;
   }
 
   if (user.role === 'station_operator') {
-    return <OperatorTabs />;
+    return <OperatorStack />;
   }
 
   if (user.role === 'admin') {

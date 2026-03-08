@@ -6,6 +6,13 @@ const USER_ROLE_ALIASES = {
   operator: 'station_operator',
 };
 
+const USER_ROLE_LABELS = {
+  vehicle_owner: 'Vehicle Owner',
+  station_owner: 'Station Owner',
+  station_operator: 'Station Operator',
+  admin: 'Admin',
+};
+
 export const normalizeUserRole = (role) => {
   if (typeof role !== 'string') {
     return role;
@@ -32,4 +39,18 @@ export const normalizeUserPayload = (user) => {
     mustChangePassword: Boolean(user.mustChangePassword),
     emailVerified: user.emailVerified !== false,
   };
+};
+
+export const getUserRoleLabel = (role) => {
+  const normalizedRole = normalizeUserRole(role);
+  if (!normalizedRole) {
+    return 'User';
+  }
+
+  return (
+    USER_ROLE_LABELS[normalizedRole] ||
+    String(normalizedRole)
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (character) => character.toUpperCase())
+  );
 };

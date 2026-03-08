@@ -1,9 +1,15 @@
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import axios from 'axios';
 import { useUser } from '../../../context/UserContext';
 import { AppTheme } from '../../../constants/Colors';
-import { markAllLocalNotificationsAsRead, readLocalNotifications } from '../../../utils/localNotifications';
+import { buildApiUrl, buildMobileRequestConfig } from '../../../utils/apiConfig';
+import {
+  markAllLocalNotificationsAsRead,
+  readLocalNotifications,
+} from '../../../utils/localNotifications';
+import { syncRemoteNotificationsToLocal } from '../../../utils/notificationSync';
 import ScreenShell from '../../Components/UI/ScreenShell';
 import SectionHeader from '../../Components/UI/SectionHeader';
 
@@ -54,26 +60,48 @@ const NotificationCenterScreen = () => {
   const [error, setError] = useState('');
 
   const loadNotifications = useCallback(async () => {
+    const userId = String(user?._id || '').trim();
+
     try {
       setError('');
-      const notificationList = await readLocalNotifications(user?._id);
-      setNotifications(notificationList);
+      if (!userId) {
+        setNotifications([]);
+        return;
+      }
 
-      const unreadNotificationIds = notificationList
+      const cachedNotifications = await readLocalNotifications(userId);
+      setNotifications(cachedNotifications);
+
+      let syncedNotifications = cachedNotifications;
+      try {
+        syncedNotifications = await syncRemoteNotificationsToLocal(user);
+        setNotifications(syncedNotifications);
+      } catch (syncError) {
+        console.error('Error syncing notifications from server:', syncError);
+        if (!cachedNotifications.length) {
+          setError(syncError.response?.data?.message || 'Failed to sync notifications.');
+        }
+      }
+
+      const unreadNotificationIds = syncedNotifications
         .filter((notification) => notification && !notification.isRead && notification._id)
         .map((notification) => notification._id);
 
       if (unreadNotificationIds.length) {
-        await markAllLocalNotificationsAsRead(user?._id);
+        const { notifications: readNotifications } = await markAllLocalNotificationsAsRead(userId);
+        setNotifications(readNotifications);
 
-        const readIdSet = new Set(unreadNotificationIds);
-        setNotifications((current) =>
-          current.map((notification) =>
-            readIdSet.has(notification._id)
-              ? { ...notification, isRead: true }
-              : notification,
-          ),
-        );
+        if (user?.token) {
+          try {
+            await axios.patch(
+              buildApiUrl('/api/notifications/mine/read'),
+              {},
+              buildMobileRequestConfig(user),
+            );
+          } catch (markReadError) {
+            console.error('Error marking remote notifications as read:', markReadError);
+          }
+        }
       }
     } catch (fetchError) {
       console.error('Error fetching notifications:', fetchError);
@@ -106,46 +134,55 @@ const NotificationCenterScreen = () => {
           <View style={styles.feedbackCard}>
             <Text style={styles.feedbackText}>Loading notifications...</Text>
           </View>
-        ) : error ? (
-          <View style={[styles.feedbackCard, styles.errorCard]}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
         ) : notifications.length === 0 ? (
-          <View style={styles.feedbackCard}>
-            <Text style={styles.feedbackText}>No notifications available.</Text>
-          </View>
+          error ? (
+            <View style={[styles.feedbackCard, styles.errorCard]}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : (
+            <View style={styles.feedbackCard}>
+              <Text style={styles.feedbackText}>No notifications available.</Text>
+            </View>
+          )
         ) : (
-          notifications.map((notification) => {
-            const style = getStatusStyle(notification.status);
-
-            return (
-              <View
-                key={notification._id}
-                style={[
-                  styles.notificationCard,
-                  notification.isRead ? styles.notificationCardRead : null,
-                ]}
-              >
-                <View style={styles.cardTop}>
-                  <View style={[styles.statusChip, { backgroundColor: style.chipBg }]}>
-                    <Text style={[styles.statusChipText, { color: style.textColor }]}>
-                      {style.label}
-                    </Text>
-                  </View>
-                  <Text style={styles.timeText}>{formatDateTime(notification.createdAt)}</Text>
-                </View>
-
-                <Text style={styles.notificationTitle}>{notification.title}</Text>
-                <Text style={styles.notificationMessage}>{notification.message}</Text>
-
-                <View style={styles.cardBottom}>
-                  {notification.vehicle?.vehicleNumber ? (
-                    <Text style={styles.vehicleTag}>{notification.vehicle.vehicleNumber}</Text>
-                  ) : null}
-                </View>
+          <>
+            {error ? (
+              <View style={[styles.feedbackCard, styles.errorCard]}>
+                <Text style={styles.errorText}>{error}</Text>
               </View>
-            );
-          })
+            ) : null}
+            {notifications.map((notification) => {
+              const style = getStatusStyle(notification.status);
+
+              return (
+                <View
+                  key={notification._id}
+                  style={[
+                    styles.notificationCard,
+                    notification.isRead ? styles.notificationCardRead : null,
+                  ]}
+                >
+                  <View style={styles.cardTop}>
+                    <View style={[styles.statusChip, { backgroundColor: style.chipBg }]}>
+                      <Text style={[styles.statusChipText, { color: style.textColor }]}>
+                        {style.label}
+                      </Text>
+                    </View>
+                    <Text style={styles.timeText}>{formatDateTime(notification.createdAt)}</Text>
+                  </View>
+
+                  <Text style={styles.notificationTitle}>{notification.title}</Text>
+                  <Text style={styles.notificationMessage}>{notification.message}</Text>
+
+                  <View style={styles.cardBottom}>
+                    {notification.vehicle?.vehicleNumber ? (
+                      <Text style={styles.vehicleTag}>{notification.vehicle.vehicleNumber}</Text>
+                    ) : null}
+                  </View>
+                </View>
+              );
+            })}
+          </>
         )}
       </View>
     </ScreenShell>

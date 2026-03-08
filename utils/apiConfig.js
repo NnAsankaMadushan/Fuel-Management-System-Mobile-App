@@ -2,7 +2,7 @@ const MOBILE_CLIENT_HEADERS = {
   'X-Client-Platform': 'mobile',
 };
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+const API_URL = 'http://192.168.43.27:5000';
 
 const normalizeBaseUrl = (value) => String(value || '').trim().replace(/\/+$/, '');
 export const API_BASE_URL = normalizeBaseUrl(API_URL);
